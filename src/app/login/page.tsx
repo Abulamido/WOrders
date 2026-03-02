@@ -1,0 +1,174 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Store, Phone, ChevronRight, Loader2, KeyRound, ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export default function LoginPage() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [whatsappNumber, setWhatsappNumber] = useState("");
+    const [otpCode, setOtpCode] = useState("");
+    const [step, setStep] = useState(1); // 1: Number, 2: Code
+
+    const handleSendOTP = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ whatsapp_number: whatsappNumber }),
+            });
+
+            if (res.ok) {
+                setStep(2);
+            } else {
+                const errData = await res.json();
+                setError(errData.error || "Failed to find account");
+            }
+        } catch (err) {
+            setError("Something went wrong");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerify = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+
+        try {
+            const res = await fetch("/api/auth/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ whatsapp_number: whatsappNumber, code: otpCode }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                localStorage.setItem("menuhorse_org_id", data.orgId);
+                router.push("/dashboard");
+            } else {
+                const errData = await res.json();
+                setError(errData.error || "Invalid verification code");
+                setLoading(false);
+            }
+        } catch (err) {
+            setError("Something went wrong");
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col pt-12 pb-20 px-6">
+            <header className="flex items-center justify-center gap-3 mb-16">
+                <span className="text-3xl">🐴</span>
+                <span className="font-bold text-2xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
+                    MenuHorse
+                </span>
+            </header>
+
+            <main className="flex-1 w-full max-w-sm mx-auto flex flex-col justify-center">
+                {step === 1 ? (
+                    <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+                        <div className="text-center mb-10">
+                            <h1 className="text-3xl font-bold mb-3">Vendor Login</h1>
+                            <p className="text-gray-400">Enter your WhatsApp business number.</p>
+                        </div>
+
+                        <form onSubmit={handleSendOTP} className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    WhatsApp Business Number
+                                </label>
+                                <div className="relative">
+                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                                    <input
+                                        type="text"
+                                        required
+                                        value={whatsappNumber}
+                                        onChange={(e) => setWhatsappNumber(e.target.value)}
+                                        placeholder="+1234567890"
+                                        className="w-full bg-[#141420] border border-white/10 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {error && (
+                                <p className="text-red-400 text-sm">{error}</p>
+                            )}
+
+                            <div className="pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={!whatsappNumber || loading}
+                                    className="w-full flex items-center justify-center gap-2 py-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 transition-all font-bold rounded-xl shadow-lg shadow-emerald-500/20"
+                                >
+                                    {loading ? <Loader2 className="animate-spin" size={18} /> : "Send Login Code"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                ) : (
+                    <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+                        <button
+                            onClick={() => setStep(1)}
+                            className="flex items-center gap-2 text-sm text-gray-500 hover:text-white mb-6 transition-colors"
+                        >
+                            <ArrowLeft size={16} /> Back to number
+                        </button>
+
+                        <div className="text-center mb-10">
+                            <h1 className="text-3xl font-bold mb-3">Verify it&apos;s you</h1>
+                            <p className="text-gray-400">Enter the 4-digit code we just sent to your WhatsApp number.</p>
+                        </div>
+
+                        <form onSubmit={handleVerify} className="space-y-5">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    Verification Code
+                                </label>
+                                <div className="relative">
+                                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                                    <input
+                                        type="text"
+                                        required
+                                        maxLength={4}
+                                        value={otpCode}
+                                        onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ""))}
+                                        placeholder="1234"
+                                        className="w-full bg-[#141420] border border-white/10 rounded-xl py-4 pl-12 pr-4 text-center text-2xl tracking-[1em] font-bold focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            {error && (
+                                <p className="text-red-400 text-sm">{error}</p>
+                            )}
+
+                            <div className="pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={otpCode.length < 4 || loading}
+                                    className="w-full flex items-center justify-center gap-2 py-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 transition-all font-bold rounded-xl shadow-lg shadow-emerald-500/20"
+                                >
+                                    {loading ? <Loader2 className="animate-spin" size={18} /> : "Verify & Log In"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                )}
+
+                <div className="mt-8 text-center text-sm text-gray-500">
+                    Don't have an account? <a href="/onboarding" className="text-emerald-400 hover:underline">Sign up</a>
+                </div>
+            </main>
+        </div>
+    );
+}
