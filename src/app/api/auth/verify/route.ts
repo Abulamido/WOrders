@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 
+const OTP_CONFIG = {
+    length: 4,
+    expiresInMinutes: 10,
+    maxAttempts: 3,
+    cooldownMinutes: 30,
+};
+
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
@@ -21,17 +28,52 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid or expired verification code" }, { status: 401 });
         }
 
-        // 2. Check if expired
+        // 2. Check if locked out
+        if (otp.locked_until) {
+            const lockedUntil = new Date(otp.locked_until);
+            if (lockedUntil > new Date()) {
+                const waitMins = Math.ceil((lockedUntil.getTime() - Date.now()) / 60000);
+                return NextResponse.json({
+                    error: `Account locked due to too many failed attempts. Try again in ${waitMins} minutes.`
+                }, { status: 429 });
+            }
+        }
+
+        // 3. Check if expired
         if (new Date(otp.expires_at) < new Date()) {
             return NextResponse.json({ error: "Verification code has expired" }, { status: 401 });
         }
 
-        // 3. Verify code
+        // 4. Verify code
         if (otp.code !== code) {
-            return NextResponse.json({ error: "Incorrect verification code" }, { status: 401 });
+            const newAttempts = (otp.attempts || 0) + 1;
+
+            if (newAttempts >= OTP_CONFIG.maxAttempts) {
+                // Lock out the account
+                const lockedUntil = new Date(Date.now() + OTP_CONFIG.cooldownMinutes * 60 * 1000).toISOString();
+                await supabase
+                    .from("vendor_otps")
+                    .update({ attempts: newAttempts, locked_until: lockedUntil })
+                    .eq("phone", whatsapp_number);
+
+                return NextResponse.json({
+                    error: `Too many failed attempts. Account locked for ${OTP_CONFIG.cooldownMinutes} minutes.`
+                }, { status: 429 });
+            } else {
+                // Just log the attempt
+                await supabase
+                    .from("vendor_otps")
+                    .update({ attempts: newAttempts })
+                    .eq("phone", whatsapp_number);
+
+                const remaining = OTP_CONFIG.maxAttempts - newAttempts;
+                return NextResponse.json({
+                    error: `Incorrect verification code. ${remaining} attempt(s) remaining.`
+                }, { status: 401 });
+            }
         }
 
-        // 4. Code is correct! Find the organization
+        // 5. Code is correct! Find the organization
         const { data: org, error: orgError } = await supabase
             .from("organizations")
             .select("id, name")
@@ -42,7 +84,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Associated organization not found" }, { status: 404 });
         }
 
-        // 5. Success! Delete the OTP
+        // 6. Success! Delete the OTP record to prevent reuse
         await supabase
             .from("vendor_otps")
             .delete()

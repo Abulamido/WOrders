@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
     Clock,
     CheckCircle2,
@@ -281,9 +282,9 @@ export default function OrdersDashboard() {
                                     >
                                         {/* Order header */}
                                         <div className="flex items-center justify-between mb-3">
-                                            <span className="font-mono text-sm font-bold text-white/80">
+                                            <Link href={`/dashboard/orders/${order.id}`} className="font-mono text-sm font-bold text-white/80 hover:text-emerald-400 transition-colors">
                                                 {shortOrderId(order.id)}
-                                            </span>
+                                            </Link>
                                             <span className="text-xs text-gray-500">
                                                 {formatRelativeTime(order.created_at)}
                                             </span>

@@ -66,6 +66,7 @@ export default function MenuBuilder() {
     const [itemName, setItemName] = useState("");
     const [itemDescription, setItemDescription] = useState("");
     const [itemPrice, setItemPrice] = useState("");
+    const [itemImageUrl, setItemImageUrl] = useState<string | null>(null);
     const [itemPrepTime, setItemPrepTime] = useState("15");
     const [itemVariants, setItemVariants] = useState<MenuVariant[]>([]);
     const [itemModifiers, setItemModifiers] = useState<MenuModifier[]>([]);
@@ -193,6 +194,7 @@ export default function MenuBuilder() {
             setItemName(item.name);
             setItemDescription(item.description || "");
             setItemPrice(item.price.toString());
+            setItemImageUrl(item.image_url);
             setItemPrepTime(item.prep_time_min.toString());
             setItemVariants(item.variants || []);
             setItemModifiers(item.modifiers || []);
@@ -201,6 +203,7 @@ export default function MenuBuilder() {
             setItemName("");
             setItemDescription("");
             setItemPrice("");
+            setItemImageUrl(null);
             setItemPrepTime("15");
             setItemVariants([]);
             setItemModifiers([]);
@@ -218,6 +221,7 @@ export default function MenuBuilder() {
             name: itemName,
             description: itemDescription,
             price: parseFloat(itemPrice),
+            image_url: itemImageUrl,
             prep_time_min: parseInt(itemPrepTime),
             category_id: activeCategory,
             variants: itemVariants,
@@ -253,6 +257,30 @@ export default function MenuBuilder() {
             if (res.ok) fetchMenu(orgId);
         } catch (err) {
             console.error("Failed to delete item:", err);
+        }
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !orgId) return;
+
+        setFormLoading(true);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const res = await fetch(`/api/menu/${orgId}/upload`, {
+                method: "POST",
+                body: formData,
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setItemImageUrl(data.url);
+            }
+        } catch (err) {
+            console.error("Upload error:", err);
+        } finally {
+            setFormLoading(false);
         }
     };
 
@@ -469,6 +497,34 @@ export default function MenuBuilder() {
                             </button>
                         </div>
                         <form onSubmit={handleSaveItem} className="p-6 space-y-6 overflow-y-auto max-h-[85vh]">
+                            {/* Image Upload */}
+                            <div className="flex items-center gap-6 pb-6 border-b border-white/5">
+                                <div className="w-24 h-24 rounded-2xl bg-[#0a0a0f] border border-dashed border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0 group relative">
+                                    {itemImageUrl ? (
+                                        <img src={itemImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <ImageIcon size={32} className="text-gray-700" />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Pencil size={16} className="text-white" />
+                                    </div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageUpload}
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                    />
+                                </div>
+                                <div className="flex-1">
+                                    <h4 className="font-semibold text-white mb-1">Item Photo</h4>
+                                    <p className="text-xs text-gray-500 mb-3">Upload a high-quality photo of the dish to attract more customers.</p>
+                                    <label className="inline-flex items-center px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-gray-400 cursor-pointer transition-colors">
+                                        {itemImageUrl ? "Change Photo" : "Choose Photo"}
+                                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                    </label>
+                                </div>
+                            </div>
+
                             {/* Basic Info */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">

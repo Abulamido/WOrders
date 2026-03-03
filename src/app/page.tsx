@@ -37,7 +37,7 @@ export default function LandingPage() {
             href="/onboarding"
             className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-emerald-500/20"
           >
-            Get Started Free
+            Join Beta (2 spots left)
           </Link>
         </div>
       </nav>
@@ -46,20 +46,19 @@ export default function LandingPage() {
       <section className="relative z-10 max-w-5xl mx-auto px-6 pt-16 lg:pt-28 pb-20 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm mb-8">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Now in beta — Free for early cafeterias
+          Beta testers report 15 min → 4 min average wait times
         </div>
 
         <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight tracking-tight">
-          Your cafeteria,
+          Cut lunch rush chaos by 70%
           <br />
-          <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 bg-clip-text text-transparent">
-            powered by WhatsApp
+          <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 bg-clip-text text-transparent text-3xl sm:text-4xl lg:text-5xl">
+            Customers order via WhatsApp, no app downloads
           </span>
         </h1>
 
         <p className="max-w-2xl mx-auto mt-6 text-lg text-gray-400 leading-relaxed">
-          Customers browse your menu, place orders, and pay — all inside
-          WhatsApp. No app downloads. No friction. Just orders flowing in.
+          The fastest way to take orders. Customers browse, customize, and pay entirely inside WhatsApp. No new apps. Zero friction. Just orders flowing directly to your kitchen.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
@@ -67,16 +66,23 @@ export default function LandingPage() {
             href="/onboarding"
             className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl text-lg transition-all duration-200 shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5"
           >
-            Start Free Trial →
+            Join beta — first 10 free (2 spots left) →
           </Link>
           <button className="px-8 py-4 border border-white/10 hover:border-white/20 rounded-2xl text-lg font-medium text-gray-300 hover:text-white transition-all duration-200">
             Watch Demo
           </button>
         </div>
 
-        <p className="mt-6 text-sm text-gray-600">
-          No credit card · Setup in 5 minutes · Cancel anytime
-        </p>
+        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm font-medium text-gray-400">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+            <span>⚡</span>
+            <span>Official WhatsApp Business Solution Provider</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
+            <span>🔒</span>
+            <span>PCI Compliant via Stripe</span>
+          </div>
+        </div>
       </section>
 
       {/* How it works */}
@@ -253,14 +259,14 @@ export default function LandingPage() {
           </span>
         </h2>
         <p className="text-gray-400 mb-8 max-w-lg mx-auto">
-          Join 10+ cafeterias already transforming their ordering. Set up in
-          5 minutes, free for 30 days.
+          Join 8 cafeterias already transforming their ordering. Set up in
+          5 minutes.
         </p>
         <Link
           href="/dashboard"
           className="inline-block px-10 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl text-lg transition-all duration-200 shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5"
         >
-          Get Started Free →
+          Join beta — first 10 free (2 spots left) →
         </Link>
       </section>
 

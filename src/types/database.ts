@@ -23,6 +23,7 @@ export interface Organization {
     is_active: boolean;
     business_hours: Record<string, { open: string; close: string }>;
     timezone: string;
+    notification_phone: string | null;
     created_at: string;
     updated_at: string;
 }

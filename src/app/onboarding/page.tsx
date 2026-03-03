@@ -22,6 +22,7 @@ export default function OnboardingFlow() {
     const [formData, setFormData] = useState({
         name: "",
         whatsapp_number: "",
+        notification_phone: "",
         openTime: "08:00",
         closeTime: "18:00"
     });
@@ -48,6 +49,7 @@ export default function OnboardingFlow() {
                 body: JSON.stringify({
                     name: formData.name,
                     whatsapp_number: formData.whatsapp_number,
+                    notification_phone: formData.notification_phone,
                     business_hours: hours,
                 })
             });
@@ -120,20 +122,20 @@ export default function OnboardingFlow() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    WhatsApp Business Number
+                                    Your Personal WhatsApp (for Order Alerts)
                                 </label>
                                 <div className="relative">
-                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
                                     <input
                                         type="text"
-                                        value={formData.whatsapp_number}
-                                        onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
-                                        placeholder="e.g. +1234567890"
+                                        value={formData.notification_phone}
+                                        onChange={(e) => setFormData({ ...formData, notification_phone: e.target.value })}
+                                        placeholder="e.g. +1234567891"
                                         className="w-full bg-[#141420] border border-white/10 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
                                     />
                                 </div>
                                 <p className="text-xs text-gray-500 mt-2">
-                                    This is the number customers will text to see your menu.
+                                    We will send you a WhatsApp message here whenever you get a new order.
                                 </p>
                             </div>
                         </div>
@@ -141,7 +143,7 @@ export default function OnboardingFlow() {
                         <div className="pt-8">
                             <button
                                 onClick={handleNext}
-                                disabled={!formData.name || !formData.whatsapp_number}
+                                disabled={!formData.name || !formData.whatsapp_number || !formData.notification_phone}
                                 className="w-full flex items-center justify-center gap-2 py-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 transition-all font-bold rounded-xl shadow-lg shadow-emerald-500/20"
                             >
                                 Continue <ChevronRight size={18} />

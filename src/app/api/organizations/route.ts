@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
             name: body.name,
             slug,
             whatsapp_number: body.whatsapp_number,
+            notification_phone: body.notification_phone || body.whatsapp_number, // Default to business number if not provided
             plan: body.plan || "starter",
             is_active: true,
             business_hours: body.business_hours || {

@@ -16,6 +16,9 @@ export function createServiceClient() {
         autoRefreshToken: false,
         persistSession: false,
       },
+      global: {
+        fetch: fetch.bind(globalThis), // Connection pooling/reuse for Vercel
+      },
     }
   );
 }

@@ -21,6 +21,7 @@ CREATE TABLE organizations (
   is_active BOOLEAN DEFAULT true,
   business_hours JSONB DEFAULT '{"mon": {"open": "08:00", "close": "18:00"}, "tue": {"open": "08:00", "close": "18:00"}, "wed": {"open": "08:00", "close": "18:00"}, "thu": {"open": "08:00", "close": "18:00"}, "fri": {"open": "08:00", "close": "18:00"}}',
   timezone VARCHAR(50) DEFAULT 'America/New_York',
+  notification_phone VARCHAR(20), -- Vendor's personal WhatsApp for alerts
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -115,6 +116,8 @@ CREATE TABLE vendor_otps (
   phone VARCHAR(20) PRIMARY KEY,
   code VARCHAR(6) NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  attempts INTEGER DEFAULT 0,
+  locked_until TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -197,3 +200,29 @@ CREATE TRIGGER set_updated_at_menu_items
 CREATE TRIGGER set_updated_at_orders
   BEFORE UPDATE ON orders
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- =================================================================
+-- Webhook Logs (Phase 2 - Idempotency)
+-- =================================================================
+CREATE TABLE webhook_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    message_id TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Note: No RLS policies needed right now as it's only accessed by service_role for idempotency checks.
+
+-- =================================================================
+-- Storage Buckets & Policies (Phase 2)
+-- =================================================================
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('menu-images', 'menu-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Allow org uploads"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'menu-images' AND 
+  auth.uid()::text = SPLIT_PART(name, '/', 1)
+);

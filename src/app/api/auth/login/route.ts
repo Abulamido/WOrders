@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 
+const OTP_CONFIG = {
+    length: 4,
+    expiresInMinutes: 10,
+    maxAttempts: 3,
+    cooldownMinutes: 30,
+};
+
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
@@ -22,28 +29,47 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Organization not found for this number" }, { status: 404 });
         }
 
-        // 2. Generate 4-digit OTP
-        const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 mins
+        // 2. Check if currently locked out
+        const { data: existingOtp } = await supabase
+            .from("vendor_otps")
+            .select("locked_until")
+            .eq("phone", whatsapp_number)
+            .single();
 
-        // 3. Save OTP to DB (upsert based on phone)
+        if (existingOtp && existingOtp.locked_until) {
+            const lockedUntil = new Date(existingOtp.locked_until);
+            if (lockedUntil > new Date()) {
+                const waitMins = Math.ceil((lockedUntil.getTime() - Date.now()) / 60000);
+                return NextResponse.json({
+                    error: `Too many failed attempts. Try again in ${waitMins} minutes.`
+                }, { status: 429 });
+            }
+        }
+
+        // 3. Generate 4-digit OTP
+        const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+        const expiresAt = new Date(Date.now() + OTP_CONFIG.expiresInMinutes * 60 * 1000).toISOString();
+
+        // 4. Save OTP to DB (upsert based on phone, reset attempts)
         const { error: otpError } = await supabase
             .from("vendor_otps")
             .upsert({
                 phone: whatsapp_number,
                 code: otpCode,
-                expires_at: expiresAt
+                expires_at: expiresAt,
+                attempts: 0,
+                locked_until: null
             });
 
         if (otpError) {
             throw new Error(`Failed to save OTP: ${otpError.message}`);
         }
 
-        // 4. Send OTP via WhatsApp
+        // 5. Send OTP via WhatsApp
         const { sendTextMessage } = await import("@/lib/whatsapp-sender");
         await sendTextMessage(
             whatsapp_number,
-            `🐴 *MenuHorse Login Code*: ${otpCode}\n\nUse this code to access your cafeteria dashboard. It expires in 10 minutes.`
+            `🐴 *MenuHorse Login Code*: ${otpCode}\n\nUse this code to access your cafeteria dashboard. It expires in ${OTP_CONFIG.expiresInMinutes} minutes.`
         );
 
         return NextResponse.json({ success: true, message: "OTP sent successfully" });
