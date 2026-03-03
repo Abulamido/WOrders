@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
         const { sendTextMessage } = await import("@/lib/whatsapp-sender");
         await sendTextMessage(
             whatsapp_number,
-            `🐴 *MenuHorse Login Code*: ${otpCode}\n\nUse this code to access your cafeteria dashboard. It expires in ${OTP_CONFIG.expiresInMinutes} minutes.`
+            `🌱 *CafeteriaFlow Login Code*: ${otpCode}\n\nUse this code to access your cafeteria dashboard. It expires in ${OTP_CONFIG.expiresInMinutes} minutes.`
         );
 
         return NextResponse.json({ success: true, message: "OTP sent successfully" });

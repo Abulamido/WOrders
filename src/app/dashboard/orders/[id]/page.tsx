@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { ArrowLeft, Clock, DollarSign, MapPin, Package, Phone, User, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 import { Order, OrderStatus } from "@/types/database";
 
 export default function OrderDetailsPage() {
@@ -16,7 +16,6 @@ export default function OrderDetailsPage() {
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
-    const supabase = createClientComponentClient();
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -94,8 +93,8 @@ export default function OrderDetailsPage() {
 
                 <div className="ml-auto">
                     <span className={`px-3 py-1 text-sm font-semibold rounded-full border ${order.payment_status === 'paid'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                         }`}>
                         {order.payment_status.toUpperCase()}
                     </span>

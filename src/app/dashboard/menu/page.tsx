@@ -97,7 +97,7 @@ export default function MenuBuilder() {
     }, [activeCategory]);
 
     useEffect(() => {
-        const storedOrgId = localStorage.getItem("menuhorse_org_id");
+        const storedOrgId = localStorage.getItem("cafeteriaflow_org_id");
         if (storedOrgId) {
             setOrgId(storedOrgId);
             fetchMenu(storedOrgId);

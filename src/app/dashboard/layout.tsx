@@ -33,7 +33,7 @@ export default function DashboardLayout({
 
     useEffect(() => {
         // Lightweight MVP Auth check
-        const storedId = localStorage.getItem("menuhorse_org_id");
+        const storedId = localStorage.getItem("cafeteriaflow_org_id");
         if (!storedId) {
             router.push("/login");
         }
@@ -44,9 +44,9 @@ export default function DashboardLayout({
             {/* Mobile header */}
             <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-16 bg-[#0f0f1a]/95 backdrop-blur-xl border-b border-white/5">
                 <div className="flex items-center gap-3">
-                    <span className="text-xl">🐴</span>
+                    <span className="text-xl">🌱</span>
                     <span className="font-bold text-lg bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                        MenuHorse
+                        CafeteriaFlow
                     </span>
                 </div>
                 <button
@@ -66,9 +66,9 @@ export default function DashboardLayout({
             >
                 {/* Logo */}
                 <div className="flex items-center gap-3 px-6 h-16 border-b border-white/5">
-                    <span className="text-2xl">🐴</span>
+                    <span className="text-2xl">🌱</span>
                     <span className="font-bold text-xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                        MenuHorse
+                        CafeteriaFlow
                     </span>
                 </div>
 

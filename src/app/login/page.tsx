@@ -52,7 +52,7 @@ export default function LoginPage() {
 
             if (res.ok) {
                 const data = await res.json();
-                localStorage.setItem("menuhorse_org_id", data.orgId);
+                localStorage.setItem("cafeteriaflow_org_id", data.orgId);
                 router.push("/dashboard");
             } else {
                 const errData = await res.json();
@@ -68,9 +68,9 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col pt-12 pb-20 px-6">
             <header className="flex items-center justify-center gap-3 mb-16">
-                <span className="text-3xl">🐴</span>
+                <span className="text-3xl">🌱</span>
                 <span className="font-bold text-2xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                    MenuHorse
+                    CafeteriaFlow
                 </span>
             </header>
 

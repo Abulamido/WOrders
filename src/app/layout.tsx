@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "MenuHorse — WhatsApp Ordering for Cafeterias",
+  title: "CafeteriaFlow — WhatsApp Ordering for Cafeterias",
   description:
     "Let your customers browse menus, place orders, and pay — all via WhatsApp. No app downloads. Zero friction.",
 };

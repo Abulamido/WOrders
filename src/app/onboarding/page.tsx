@@ -57,7 +57,7 @@ export default function OnboardingFlow() {
             if (res.ok) {
                 const resData = await res.json();
                 // Store org id for lightweight auth
-                localStorage.setItem("menuhorse_org_id", resData.organization.id);
+                localStorage.setItem("cafeteriaflow_org_id", resData.organization.id);
 
                 // Success! The API also creates default categories (Breakfast, Lunch, Drinks, Desserts)
                 setStep(4); // Success step
@@ -78,9 +78,9 @@ export default function OnboardingFlow() {
         <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col pt-12 pb-20 px-6">
             {/* Header */}
             <header className="flex items-center justify-center gap-3 mb-16">
-                <span className="text-3xl">🐴</span>
+                <span className="text-3xl">🌱</span>
                 <span className="font-bold text-2xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                    MenuHorse
+                    CafeteriaFlow
                 </span>
             </header>
 

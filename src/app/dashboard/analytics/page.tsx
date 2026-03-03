@@ -106,14 +106,14 @@ export default function AnalyticsDashboard() {
     }, [period]);
 
     useEffect(() => {
-        const orgId = localStorage.getItem("menuhorse_org_id");
+        const orgId = localStorage.getItem("cafeteriaflow_org_id");
         if (orgId) {
             fetchAnalytics(orgId);
         }
     }, [fetchAnalytics]);
 
     const handleSendSummary = async () => {
-        const orgId = localStorage.getItem("menuhorse_org_id");
+        const orgId = localStorage.getItem("cafeteriaflow_org_id");
         if (!orgId) return;
 
         setSending(true);

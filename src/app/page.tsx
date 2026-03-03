@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "MenuHorse — WhatsApp Ordering for Cafeterias",
+  title: "CafeteriaFlow — WhatsApp Ordering for Cafeterias",
   description:
     "Let your customers browse menus, place orders, and pay — all via WhatsApp. No app downloads. Zero friction. Built for cafeterias.",
 };
@@ -21,9 +21,9 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 py-5">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🐴</span>
+          <span className="text-2xl">🌱</span>
           <span className="font-bold text-xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-            MenuHorse
+            CafeteriaFlow
           </span>
         </div>
         <div className="flex items-center gap-4">
@@ -273,13 +273,13 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/5 py-8 px-6 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="text-lg">🐴</span>
+          <span className="text-lg">🌱</span>
           <span className="font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-            MenuHorse
+            CafeteriaFlow
           </span>
         </div>
         <p className="text-xs text-gray-600">
-          © 2026 MenuHorse. WhatsApp-first ordering for cafeterias.
+          © 2026 CafeteriaFlow. WhatsApp-first ordering for cafeterias.
         </p>
       </footer>
     </div>
