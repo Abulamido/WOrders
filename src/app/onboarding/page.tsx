@@ -122,6 +122,25 @@ export default function OnboardingFlow() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">
+                                    WhatsApp Business Number (for customer orders)
+                                </label>
+                                <div className="relative">
+                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
+                                    <input
+                                        type="text"
+                                        value={formData.whatsapp_number}
+                                        onChange={(e) => setFormData({ ...formData, whatsapp_number: e.target.value })}
+                                        placeholder="e.g. +1234567890"
+                                        className="w-full bg-[#141420] border border-white/10 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Customers will message this number to place orders.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-2">
                                     Your Personal WhatsApp (for Order Alerts)
                                 </label>
                                 <div className="relative">

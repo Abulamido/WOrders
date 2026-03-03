@@ -31,29 +31,44 @@ export async function POST(req: NextRequest) {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
 
+    // Build the insert payload — only include fields that exist in the database
+    const insertPayload: Record<string, unknown> = {
+        name: body.name,
+        slug,
+        whatsapp_number: body.whatsapp_number,
+        plan: body.plan || "starter",
+        is_active: true,
+        business_hours: body.business_hours || {
+            mon: { open: "08:00", close: "18:00" },
+            tue: { open: "08:00", close: "18:00" },
+            wed: { open: "08:00", close: "18:00" },
+            thu: { open: "08:00", close: "18:00" },
+            fri: { open: "08:00", close: "18:00" },
+        },
+        timezone: body.timezone || "America/New_York",
+    };
+
     const { data: org, error } = await supabase
         .from("organizations")
-        .insert({
-            name: body.name,
-            slug,
-            whatsapp_number: body.whatsapp_number,
-            notification_phone: body.notification_phone || body.whatsapp_number, // Default to business number if not provided
-            plan: body.plan || "starter",
-            is_active: true,
-            business_hours: body.business_hours || {
-                mon: { open: "08:00", close: "18:00" },
-                tue: { open: "08:00", close: "18:00" },
-                wed: { open: "08:00", close: "18:00" },
-                thu: { open: "08:00", close: "18:00" },
-                fri: { open: "08:00", close: "18:00" },
-            },
-            timezone: body.timezone || "America/New_York",
-        })
+        .insert(insertPayload)
         .select()
         .single();
 
     if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("Supabase org creation error:", JSON.stringify(error));
+        return NextResponse.json({ error: error.message, code: error.code, details: error.details }, { status: 500 });
+    }
+
+    // Try to set notification_phone separately (column may not exist in older schemas)
+    if (body.notification_phone) {
+        try {
+            await supabase
+                .from("organizations")
+                .update({ notification_phone: body.notification_phone })
+                .eq("id", org.id);
+        } catch {
+            // Column doesn't exist yet — silently ignore
+        }
     }
 
     // Create default menu categories
