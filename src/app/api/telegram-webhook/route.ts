@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { TelegramUpdate, TelegramCallbackQuery, TelegramMessage, TelegramUser } from "@/types/telegram";
 import { validateWebhookSecret } from "@/lib/telegram/security";
+import { processTelegramCommand, processTelegramCallback } from "@/lib/telegram/processor";
 
 export async function POST(request: NextRequest) {
     try {
-        // Validate webhook secret
         const secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
         if (!validateWebhookSecret(secret)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -13,14 +13,37 @@ export async function POST(request: NextRequest) {
 
         const update: TelegramUpdate = await request.json();
 
-        // Handle button clicks
+        // ── Inline keyboard button presses ──────────────────────────────────
         if (update.callback_query) {
-            await handleCallbackQuery(update.callback_query);
+            const query = update.callback_query;
+            const chatId = query.message!.chat.id;
+            const messageId = query.message!.message_id;
+            const firstName = query.from.first_name;
+            const data = query.data;
+
+            // Shift-coverage actions use colon-separated format: "COVER_ACCEPT:uuid"
+            if (data.startsWith("COVER_")) {
+                await handleCoverageCallback(query);
+            } else {
+                // Everything else is an ordering action
+                await processTelegramCallback(chatId, messageId, query.id, data, firstName);
+            }
         }
 
-        // Handle commands (/start, /unsubscribe)
-        if (update.message?.text?.startsWith("/")) {
-            await handleCommand(update.message);
+        // ── Incoming text messages / commands ───────────────────────────────
+        if (update.message?.text) {
+            const msg = update.message;
+            const chatId = msg.chat.id;
+            const text = msg.text!;
+            const from = msg.from!;
+
+            // Handle /unsubscribe separately (subscription management)
+            if (text === "/unsubscribe") {
+                await handleUnsubscribe(chatId);
+            } else {
+                // All other text (incl. /start, /menu, hi, etc.) → order flow
+                await processTelegramCommand(chatId, text, from.first_name);
+            }
         }
 
         return NextResponse.json({ ok: true });
@@ -30,7 +53,9 @@ export async function POST(request: NextRequest) {
     }
 }
 
-async function handleCallbackQuery(query: TelegramCallbackQuery) {
+// ─── Shift Coverage Handlers ─────────────────────────────────────────────────
+
+async function handleCoverageCallback(query: TelegramCallbackQuery) {
     const supabase = createServiceClient();
     const [action, coverageId] = query.data.split(":");
     const chatId = query.message!.chat.id;
@@ -40,23 +65,19 @@ async function handleCallbackQuery(query: TelegramCallbackQuery) {
     if (action === "COVER_ACCEPT") {
         await handleCoverAccept(supabase, coverageId, user, chatId, messageId);
     } else if (action === "COVER_DECLINE") {
-        await handleCoverDecline(user, chatId, messageId);
+        const name = user.first_name;
+        await tgEdit(chatId, messageId, `❌ ${name} can't cover. Request still open for others.`);
     }
 
-    // Answer callback to remove loading spinner in Telegram UI
-    await fetch(
-        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ callback_query_id: query.id })
-        }
-    );
+    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: query.id }),
+    });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleCoverAccept(supabase: any, coverageId: string, user: TelegramUser, chatId: number, messageId: number) {
-    // Check if still pending
     const { data: coverage } = await supabase
         .from("shift_coverage_requests")
         .select("original_shift_id, status, requester_id")
@@ -64,119 +85,59 @@ async function handleCoverAccept(supabase: any, coverageId: string, user: Telegr
         .single();
 
     if (!coverage || coverage.status !== "pending") {
-        await editMessage(chatId, messageId, "⚠️ This shift is no longer available.");
+        await tgEdit(chatId, messageId, "⚠️ This shift is no longer available.");
         return;
     }
 
-    // Try to find if user is linked in Supabase (we might not have auth.users match if not fully integrated, but we'll try)
     const { data: sub } = await supabase
         .from("telegram_subscriptions")
         .select("user_id")
         .eq("chat_id", chatId)
         .single();
 
-    // We update accepted_by only if we have a valid UUID, otherwise null it.
     const userIdToSave = sub?.user_id || null;
 
-    // Mark as covered
-    await supabase
-        .from("shift_coverage_requests")
-        .update({
-            status: "covered",
-            accepted_by: userIdToSave,
-            accepted_at: new Date().toISOString()
-        })
-        .eq("id", coverageId);
+    await supabase.from("shift_coverage_requests").update({
+        status: "covered",
+        accepted_by: userIdToSave,
+        accepted_at: new Date().toISOString(),
+    }).eq("id", coverageId);
 
-    // Update shift assignment
     if (userIdToSave) {
-        await supabase
-            .from("shift_assignments")
-            .update({ user_id: userIdToSave })
-            .eq("shift_id", coverage.original_shift_id);
+        await supabase.from("shift_assignments").update({ user_id: userIdToSave }).eq("shift_id", coverage.original_shift_id);
     }
 
-    // Update message to show covered
     const userName = user.first_name + (user.last_name ? ` ${user.last_name}` : "");
-    await editMessage(chatId, messageId,
-        `✅ *Shift Covered*\n\nAccepted by: ${userName}\nStatus: Assigned`
-    );
+    await tgEdit(chatId, messageId, `✅ *Shift Covered*\n\nAccepted by: ${userName}\nStatus: Assigned`);
 
-    // Notify original requester
     if (coverage.requester_id) {
-        const { data: requester } = await supabase
-            .from("telegram_subscriptions")
-            .select("chat_id")
-            .eq("user_id", coverage.requester_id)
-            .single();
-
-        if (requester) {
-            await sendMessage(requester.chat_id,
-                `✅ Your coverage request has been accepted by ${userName}!`
-            );
-        }
+        const { data: requester } = await supabase.from("telegram_subscriptions").select("chat_id").eq("user_id", coverage.requester_id).single();
+        if (requester) await tgSend(requester.chat_id, `✅ Your coverage request has been accepted by ${userName}!`);
     }
 }
 
-async function handleCoverDecline(user: TelegramUser, chatId: number, messageId: number) {
-    const name = user.first_name;
-    await editMessage(chatId, messageId,
-        `❌ ${name} can't cover. Request still open for others.`
-    );
-}
-
-async function handleCommand(message: TelegramMessage) {
+async function handleUnsubscribe(chatId: number) {
     const supabase = createServiceClient();
-    const text = message.text;
-    const chatId = message.chat.id;
-    const from = message.from!;
-
-    if (text === "/start") {
-        // Subscribe user
-        await supabase.from("telegram_subscriptions").upsert(
-            {
-                chat_id: chatId,
-                username: from.username,
-                first_name: from.first_name,
-                last_name: from.last_name,
-                is_active: true
-            },
-            { onConflict: "chat_id" }
-        );
-
-        await sendMessage(chatId,
-            "✅ *Subscribed!*\n\nYou will receive:\n• Shift reminders\n• Coverage requests\n• Schedule updates"
-        );
-    } else if (text === "/unsubscribe") {
-        await supabase
-            .from("telegram_subscriptions")
-            .update({ is_active: false })
-            .eq("chat_id", chatId);
-
-        await sendMessage(chatId, "❌ Unsubscribed. Use /start to rejoin.");
-    }
+    await supabase.from("telegram_subscriptions").update({ is_active: false }).eq("chat_id", chatId);
+    await tgSend(chatId, "❌ Unsubscribed from shift alerts. Use /start to rejoin anytime.");
 }
 
-async function sendMessage(chatId: number, text: string) {
-    await fetch(
-        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" })
-        }
-    );
+// ─── Lightweight Telegram API helpers (for coverage messages) ─────────────────
+
+async function tgSend(chatId: number, text: string) {
+    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+    });
 }
 
-async function editMessage(chatId: number, messageId: number, text: string) {
-    await fetch(
-        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: "Markdown" })
-        }
-    );
+async function tgEdit(chatId: number, messageId: number, text: string) {
+    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, message_id: messageId, text, parse_mode: "Markdown" }),
+    });
 }
 
 export async function GET() {
