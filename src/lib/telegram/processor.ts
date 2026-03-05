@@ -87,15 +87,36 @@ export async function processTelegramCommand(
     firstName: string
 ) {
     const supabase = createServiceClient();
+    const cmd = text.toLowerCase().trim();
 
-    // Grab the first active org (MVP: single-tenant via first org)
-    const { data: org } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .single();
+    // Multi-restaurant deep link: /start <org_id_prefix>
+    // Users access via t.me/Cafteriaflow_bot?start=<org_id_short>
+    let org = null;
+
+    if (cmd.startsWith("/start ")) {
+        const orgCode = text.split(" ")[1]?.trim();
+        if (orgCode) {
+            // Try to find org by ID prefix (first 8 chars of UUID)
+            const { data: orgs } = await supabase
+                .from("organizations")
+                .select("*")
+                .eq("is_active", true);
+
+            org = orgs?.find((o: { id: string }) => o.id.startsWith(orgCode)) || null;
+        }
+    }
+
+    // Fallback: grab the first active org (MVP single-tenant default)
+    if (!org) {
+        const { data } = await supabase
+            .from("organizations")
+            .select("*")
+            .eq("is_active", true)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .single();
+        org = data;
+    }
 
     if (!org) {
         await sendMessage(chatId, "⚠️ The ordering service is not yet configured. Please check back later.");
@@ -103,9 +124,8 @@ export async function processTelegramCommand(
     }
 
     const session = getSession(chatId, org.id);
-    const cmd = text.toLowerCase().trim();
 
-    if (cmd === "/start" || cmd === "hi" || cmd === "hello") {
+    if (cmd === "/start" || cmd.startsWith("/start ") || cmd === "hi" || cmd === "hello") {
         await handleWelcome(chatId, firstName, org, session);
     } else if (cmd === "/menu" || cmd === "menu") {
         await sendCategories(chatId, org);

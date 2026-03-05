@@ -41,78 +41,7 @@ const columns: { status: OrderStatus; label: string; icon: React.ElementType; co
     { status: "completed", label: "Completed", icon: CheckCircle2, color: "text-gray-400", bgColor: "bg-gray-500/10 border-gray-500/20" },
 ];
 
-// Demo orders for the UI
-const demoOrders: Order[] = [
-    {
-        id: "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-        customer_phone: "+1234567890",
-        customer_name: "John D.",
-        items_json: [
-            { name: "Grilled Chicken Burger", variant: "Large", quantity: 2, total_price: 20.0 },
-            { name: "Iced Coffee", quantity: 1, total_price: 4.5 },
-        ],
-        total_amount: 26.46,
-        status: "pending",
-        payment_status: "paid",
-        pickup_time: new Date(Date.now() + 30 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 5 * 60000).toISOString(),
-    },
-    {
-        id: "b2c3d4e5-f6a7-8901-bcde-2345678901bc",
-        customer_phone: "+1987654321",
-        customer_name: "Sarah K.",
-        items_json: [
-            { name: "Caesar Salad", quantity: 1, total_price: 8.5 },
-            { name: "Sparkling Water", quantity: 1, total_price: 2.5 },
-        ],
-        total_amount: 11.88,
-        status: "pending",
-        payment_status: "paid",
-        pickup_time: new Date(Date.now() + 15 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 8 * 60000).toISOString(),
-    },
-    {
-        id: "c3d4e5f6-a7b8-9012-cdef-3456789012cd",
-        customer_phone: "+1122334455",
-        customer_name: "Mike R.",
-        items_json: [
-            { name: "Turkey Club Sandwich", quantity: 1, total_price: 9.0 },
-        ],
-        total_amount: 9.72,
-        status: "preparing",
-        payment_status: "paid",
-        pickup_time: new Date(Date.now() + 10 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 12 * 60000).toISOString(),
-    },
-    {
-        id: "d4e5f6a7-b8c9-0123-defa-4567890123de",
-        customer_phone: "+1555666777",
-        customer_name: "Lisa M.",
-        items_json: [
-            { name: "Margherita Pizza", variant: "Regular", quantity: 1, total_price: 12.0 },
-            { name: "Garlic Bread", quantity: 1, total_price: 4.0 },
-        ],
-        total_amount: 17.28,
-        status: "ready",
-        payment_status: "paid",
-        pickup_time: new Date(Date.now() + 5 * 60000).toISOString(),
-        created_at: new Date(Date.now() - 20 * 60000).toISOString(),
-    },
-    {
-        id: "e5f6a7b8-c9d0-1234-efab-5678901234ef",
-        customer_phone: "+1999888777",
-        customer_name: "Alex T.",
-        items_json: [
-            { name: "Chicken Wrap", quantity: 2, total_price: 16.0 },
-            { name: "Lemonade", quantity: 2, total_price: 7.0 },
-        ],
-        total_amount: 24.84,
-        status: "completed",
-        payment_status: "paid",
-        pickup_time: null,
-        created_at: new Date(Date.now() - 45 * 60000).toISOString(),
-    },
-];
+// Demo orders removed — dashboard now shows real Supabase data only
 
 export default function OrdersDashboard() {
     const [orders, setOrders] = useState<Order[]>([]);

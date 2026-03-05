@@ -53,6 +53,7 @@ export default function LoginPage() {
             if (res.ok) {
                 const data = await res.json();
                 localStorage.setItem("cafeteriaflow_org_id", data.orgId);
+                if (data.name) localStorage.setItem("cafeteriaflow_org_name", data.name);
                 router.push("/dashboard");
             } else {
                 const errData = await res.json();

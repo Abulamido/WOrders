@@ -30,14 +30,47 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [orgName, setOrgName] = useState("My Restaurant");
 
     useEffect(() => {
-        // Lightweight MVP Auth check
         const storedId = localStorage.getItem("cafeteriaflow_org_id");
         if (!storedId) {
             router.push("/login");
+            return;
         }
+
+        // Fetch org name dynamically
+        const fetchOrg = async () => {
+            try {
+                const res = await fetch(`/api/organizations?id=${storedId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.name) setOrgName(data.name);
+                }
+            } catch {
+                // Fallback to stored name or default
+            }
+        };
+
+        // Also check for stored name from login
+        const storedName = localStorage.getItem("cafeteriaflow_org_name");
+        if (storedName) setOrgName(storedName);
+
+        fetchOrg();
     }, [router]);
+
+    const handleLogout = () => {
+        localStorage.removeItem("cafeteriaflow_org_id");
+        localStorage.removeItem("cafeteriaflow_org_name");
+        router.push("/login");
+    };
+
+    const initials = orgName
+        .split(" ")
+        .map((w) => w[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
 
     return (
         <div className="min-h-screen bg-[#0a0a0f] text-white">
@@ -103,16 +136,23 @@ export default function DashboardLayout({
                     })}
                 </nav>
 
-                {/* Bottom section */}
+                {/* Bottom section — Dynamic org name + logout */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/5">
                     <div className="flex items-center gap-3 px-3 py-2">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-sm font-bold">
-                            A
+                            {initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">Abu&apos;s Café</p>
-                            <p className="text-xs text-gray-500">Starter Plan</p>
+                            <p className="text-sm font-medium truncate">{orgName}</p>
+                            <p className="text-xs text-gray-500">Restaurant</p>
                         </div>
+                        <button
+                            onClick={handleLogout}
+                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors"
+                            title="Log out"
+                        >
+                            <LogOut size={16} />
+                        </button>
                     </div>
                 </div>
             </aside>
