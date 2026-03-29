@@ -220,7 +220,7 @@ export default function OrderDetailsPage() {
                                 <p className="font-medium">{order.customer_name || "Guest User"}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Phone (WhatsApp)</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Phone (Telegram)</p>
                                 <div className="flex items-center gap-2">
                                     <Phone size={14} className="text-gray-400" />
                                     <p className="font-mono">{order.customer_phone}</p>

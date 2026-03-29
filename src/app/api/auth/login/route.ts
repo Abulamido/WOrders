@@ -11,29 +11,35 @@ const OTP_CONFIG = {
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
-        const { whatsapp_number } = await req.json();
+        const { phone } = await req.json();
 
-        if (!whatsapp_number) {
-            return NextResponse.json({ error: "WhatsApp number is required" }, { status: 400 });
+        if (!phone) {
+            return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
         }
 
-        // 1. Verify organization exists
+        // 1. Verify organization exists (by whatsapp_number or notification_phone)
         const { data: org, error: orgError } = await supabase
             .from("organizations")
-            .select("id, name")
-            .eq("whatsapp_number", whatsapp_number)
+            .select("id, name, whatsapp_number, notification_phone, notification_telegram_id")
+            .or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone}`)
             .eq("is_active", true)
             .single();
 
         if (orgError || !org) {
-            return NextResponse.json({ error: "Organization not found for this number" }, { status: 404 });
+            return NextResponse.json({ error: "Organization not found for this phone number." }, { status: 404 });
+        }
+
+        if (!org.notification_telegram_id) {
+            return NextResponse.json({ 
+                error: "Your Telegram account is not linked. Please open our Telegram bot and type /vendor to link your account first." 
+            }, { status: 403 });
         }
 
         // 2. Check if currently locked out
         const { data: existingOtp } = await supabase
             .from("vendor_otps")
             .select("locked_until")
-            .eq("phone", whatsapp_number)
+            .eq("phone", phone)
             .single();
 
         if (existingOtp && existingOtp.locked_until) {
@@ -54,7 +60,7 @@ export async function POST(req: NextRequest) {
         const { error: otpError } = await supabase
             .from("vendor_otps")
             .upsert({
-                phone: whatsapp_number,
+                phone: phone,
                 code: otpCode,
                 expires_at: expiresAt,
                 attempts: 0,
@@ -65,14 +71,13 @@ export async function POST(req: NextRequest) {
             throw new Error(`Failed to save OTP: ${otpError.message}`);
         }
 
-        // 5. Send OTP via WhatsApp
-        const { sendTextMessage } = await import("@/lib/whatsapp-sender");
-        await sendTextMessage(
-            whatsapp_number,
-            `🌱 *CafeteriaFlow Login Code*: ${otpCode}\n\nUse this code to access your cafeteria dashboard. It expires in ${OTP_CONFIG.expiresInMinutes} minutes.`
-        );
+        // 5. Send OTP via Telegram
+        const otpMessage = `🌱 *CafeteriaFlow Login Code*: ${otpCode}\n\nUse this code to access your vendor dashboard. It expires in ${OTP_CONFIG.expiresInMinutes} minutes.`;
 
-        return NextResponse.json({ success: true, message: "OTP sent successfully" });
+        const { sendMessage } = await import("@/lib/telegram-sender");
+        await sendMessage(org.notification_telegram_id, otpMessage);
+
+        return NextResponse.json({ success: true, message: "OTP sent to your Telegram" });
     } catch (e: any) {
         console.error("Login error:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });

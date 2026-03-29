@@ -9,7 +9,7 @@ export default function LoginPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [whatsappNumber, setWhatsappNumber] = useState("");
+    const [phone, setPhone] = useState("");
     const [otpCode, setOtpCode] = useState("");
     const [step, setStep] = useState(1); // 1: Number, 2: Code
 
@@ -22,7 +22,7 @@ export default function LoginPage() {
             const res = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ whatsapp_number: whatsappNumber }),
+                body: JSON.stringify({ phone }),
             });
 
             if (res.ok) {
@@ -47,7 +47,7 @@ export default function LoginPage() {
             const res = await fetch("/api/auth/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ whatsapp_number: whatsappNumber, code: otpCode }),
+                body: JSON.stringify({ phone, code: otpCode }),
             });
 
             if (res.ok) {
@@ -80,23 +80,23 @@ export default function LoginPage() {
                     <div className="animate-in slide-in-from-right-4 fade-in duration-300">
                         <div className="text-center mb-10">
                             <h1 className="text-3xl font-bold mb-3">Vendor Login</h1>
-                            <p className="text-gray-400">Enter your WhatsApp business number.</p>
+                            <p className="text-gray-400">Enter your registered phone number.</p>
                         </div>
 
                         <form onSubmit={handleSendOTP} className="space-y-5">
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                                    WhatsApp Business Number
+                                    Phone Number
                                 </label>
                                 <div className="relative">
                                     <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={20} />
                                     <input
                                         type="text"
                                         required
-                                        value={whatsappNumber}
-                                        onChange={(e) => setWhatsappNumber(e.target.value)}
+                                        value={phone}
+                                        onChange={(e) => setPhone(e.target.value)}
                                         placeholder="+1234567890"
-                                        className="w-full bg-[#141420] border border-white/10 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all"
+                                        className="w-full bg-[#141420] border border-white/10 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 transition-all text-sm"
                                     />
                                 </div>
                             </div>
@@ -108,7 +108,7 @@ export default function LoginPage() {
                             <div className="pt-4">
                                 <button
                                     type="submit"
-                                    disabled={!whatsappNumber || loading}
+                                    disabled={!phone || loading}
                                     className="w-full flex items-center justify-center gap-2 py-4 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 transition-all font-bold rounded-xl shadow-lg shadow-emerald-500/20"
                                 >
                                     {loading ? <Loader2 className="animate-spin" size={18} /> : "Send Login Code"}
@@ -127,7 +127,7 @@ export default function LoginPage() {
 
                         <div className="text-center mb-10">
                             <h1 className="text-3xl font-bold mb-3">Verify it&apos;s you</h1>
-                            <p className="text-gray-400">Enter the 4-digit code we just sent to your WhatsApp number.</p>
+                            <p className="text-gray-400">Enter the 4-digit code we just sent to your Telegram.</p>
                         </div>
 
                         <form onSubmit={handleVerify} className="space-y-5">

@@ -129,7 +129,9 @@ export async function processMessage(
 
     // Route based on state + input
     try {
-        if (
+        if (userInput.startsWith("order_accept_") || userInput.startsWith("order_reject_")) {
+            await handleVendorOrderAction(from, userInput);
+        } else if (
             userInput === "hi" ||
             userInput === "hello" ||
             userInput === "hey" ||
@@ -158,8 +160,6 @@ export async function processMessage(
             await handleOrderHistory(from, org);
         } else if (userInput === "reorder") {
             await handleReorder(from, org);
-        } else if (userInput.startsWith("order_accept_") || userInput.startsWith("order_reject_")) {
-            await handleVendorOrderAction(from, userInput);
         } else {
             await sendButtonMessage(from, `I didn't understand that. What would you like to do?`, [
                 { id: "menu", title: "📋 Browse Menu" },
@@ -579,10 +579,9 @@ async function handleVendorOrderAction(vendorPhone: string, input: string) {
 
     const supabase = createServiceClient();
 
-    // Get order to find customer phone & org
     const { data: order } = await supabase
         .from("orders")
-        .select("*, organizations(name, notification_phone)")
+        .select("*")
         .eq("id", orderId)
         .single();
 
@@ -590,6 +589,14 @@ async function handleVendorOrderAction(vendorPhone: string, input: string) {
         await sendTextMessage(vendorPhone, "Order not found.");
         return;
     }
+
+    const { data: orgData } = await supabase
+        .from("organizations")
+        .select("name, notification_phone")
+        .eq("id", order.org_id)
+        .single();
+
+    const orgName = orgData?.name || "the cafeteria";
 
     const newStatus = isAccept ? "preparing" : "cancelled";
 
@@ -613,12 +620,12 @@ async function handleVendorOrderAction(vendorPhone: string, input: string) {
     if (isAccept) {
         await sendTextMessage(
             order.customer_phone,
-            `👨‍🍳 *Good news!* ${order.organizations.name} has accepted your order and is now preparing it. We'll let you know when it's ready for pickup!`
+            `👨‍🍳 *Good news!* ${orgName} has accepted your order and is now preparing it. We'll let you know when it's ready for pickup!`
         );
     } else {
         await sendTextMessage(
             order.customer_phone,
-            `⚠️ *Update:* Your order at ${order.organizations.name} could not be accepted and has been cancelled. Please contact the cafeteria if you have questions.`
+            `⚠️ *Update:* Your order at ${orgName} could not be accepted and has been cancelled. Please contact the cafeteria if you have questions.`
         );
     }
 }

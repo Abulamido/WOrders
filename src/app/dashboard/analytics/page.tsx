@@ -154,7 +154,7 @@ export default function AnalyticsDashboard() {
                         )}
                     >
                         {sending ? <Loader2 size={16} className="animate-spin" /> : sent ? <Check size={16} /> : <Share2 size={16} />}
-                        {sending ? "Sending..." : sent ? "Summary Sent!" : "Send Summary to WhatsApp"}
+                        {sending ? "Sending..." : sent ? "Summary Sent!" : "Send Summary to Telegram"}
                     </button>
                     <div className="flex items-center bg-[#141420] rounded-xl border border-white/5 p-1">
                         {(["today", "week", "month"] as const).map((p) => (

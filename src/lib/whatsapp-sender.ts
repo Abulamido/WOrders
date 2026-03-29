@@ -3,15 +3,13 @@
  * Handles sending text, button, and list messages via Meta API.
  */
 
-import fs from "fs";
-import path from "path";
-const logFile = path.join(process.cwd(), "webhook_debug.log");
+
 
 async function sendRequest(payload: Record<string, unknown>) {
     const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
     const logMsg = `[${new Date().toISOString()}] Sending to Meta: ${JSON.stringify(payload)}\n`;
-    fs.appendFileSync(logFile, logMsg);
+    console.log(logMsg);
 
     const response = await fetch(WHATSAPP_API_URL, {
         method: "POST",
@@ -29,10 +27,9 @@ async function sendRequest(payload: Record<string, unknown>) {
         } catch {
             errorData = "Could not parse error JSON";
         }
-        const errLog = `WhatsApp API error: ${response.status} - ${JSON.stringify(errorData)}\n`;
-        fs.appendFileSync(logFile, errLog);
+        const errLog = `WhatsApp API error: ${response.status} - ${JSON.stringify(errorData)}`;
         console.error(errLog);
-        throw new Error(`WhatsApp API error: ${response.status}`);
+        throw new Error(errLog);
     }
 
     return response.json();

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
-import { sendTextMessage } from "@/lib/whatsapp-sender";
+import { sendMessage } from "@/lib/telegram-sender";
 import { formatCurrency } from "@/lib/utils";
 
 export async function POST(
@@ -17,8 +17,8 @@ export async function POST(
         .eq("id", orgId)
         .single();
 
-    if (!org || !org.notification_phone) {
-        return NextResponse.json({ error: "Organization or notification phone not found" }, { status: 404 });
+    if (!org || !org.notification_telegram_id) {
+        return NextResponse.json({ error: "Organization or notification Telegram ID not found" }, { status: 404 });
     }
 
     // 2. Calculate stats for TODAY (since midnight)
@@ -55,8 +55,8 @@ export async function POST(
     const summaryMsg = `📊 *Live Sales Summary: ${org.name}*\n(Today so far)\n\n💰 Total Sales: ${formatCurrency(totalSales)}\n📦 Orders: ${orderCount}\n\n🔝 Top Items:\n${topItems || "None"}\n\n_Generated from your dashboard_ 📈`;
 
     try {
-        await sendTextMessage(org.notification_phone, summaryMsg);
-        return NextResponse.json({ message: "Summary sent to WhatsApp" });
+        await sendMessage(org.notification_telegram_id as unknown as string, summaryMsg);
+        return NextResponse.json({ message: "Summary sent to Telegram" });
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }

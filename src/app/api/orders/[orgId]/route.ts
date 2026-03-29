@@ -66,21 +66,25 @@ export async function PATCH(
         .update({ status })
         .eq("id", orderId)
         .eq("org_id", orgId)
-        .select()
+        .select("*, organizations(name)")
         .single();
 
     if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Send WhatsApp notification to customer on status change
+    // Send Telegram notification to customer on status change
     if (order && (status === "preparing" || status === "ready")) {
-        const { sendTextMessage } = await import("@/lib/whatsapp-sender");
+        const { sendMessage } = await import("@/lib/telegram-sender");
         const statusMessages: Record<string, string> = {
-            preparing: `👨‍🍳 Your order is being prepared! We'll let you know when it's ready.`,
-            ready: `✅ Your order is ready for pickup! Come get it! 🎉`,
+            preparing: `👨‍🍳 *Your order from ${order.organizations?.name || "the cafeteria"} is being prepared!* We'll let you know when it's ready.`,
+            ready: `✅ *Your order is ready for pickup!* Come get it while it's hot! 🍔🍟`,
         };
-        await sendTextMessage(order.customer_phone, statusMessages[status]);
+        
+        const chatId = order.telegram_chat_id;
+        if (chatId) {
+            await sendMessage(chatId as unknown as string, statusMessages[status]).catch(console.error);
+        }
     }
 
     return NextResponse.json({ order });

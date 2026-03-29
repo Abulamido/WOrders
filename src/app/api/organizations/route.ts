@@ -4,9 +4,25 @@ import { createServiceClient } from "@/lib/supabase";
 /**
  * GET — List all organizations (admin).
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
     const supabase = createServiceClient();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
 
+    if (id) {
+        const { data, error } = await supabase
+            .from("organizations")
+            .select("*")
+            .eq("id", id)
+            .single();
+
+        if (error) {
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+        return NextResponse.json(data);
+    }
+
+    // Admin fallback — list all organizations
     const { data, error } = await supabase
         .from("organizations")
         .select("*")

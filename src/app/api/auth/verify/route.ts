@@ -11,9 +11,9 @@ const OTP_CONFIG = {
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
-        const { whatsapp_number, code } = await req.json();
+        const { phone, code } = await req.json();
 
-        if (!whatsapp_number || !code) {
+        if (!phone || !code) {
             return NextResponse.json({ error: "Phone number and code are required" }, { status: 400 });
         }
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
         const { data: otp, error: otpError } = await supabase
             .from("vendor_otps")
             .select("*")
-            .eq("phone", whatsapp_number)
+            .eq("phone", phone)
             .single();
 
         if (otpError || !otp) {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
                 await supabase
                     .from("vendor_otps")
                     .update({ attempts: newAttempts, locked_until: lockedUntil })
-                    .eq("phone", whatsapp_number);
+                    .eq("phone", phone);
 
                 return NextResponse.json({
                     error: `Too many failed attempts. Account locked for ${OTP_CONFIG.cooldownMinutes} minutes.`
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
                 await supabase
                     .from("vendor_otps")
                     .update({ attempts: newAttempts })
-                    .eq("phone", whatsapp_number);
+                    .eq("phone", phone);
 
                 const remaining = OTP_CONFIG.maxAttempts - newAttempts;
                 return NextResponse.json({
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
         const { data: org, error: orgError } = await supabase
             .from("organizations")
             .select("id, name")
-            .eq("whatsapp_number", whatsapp_number)
+            .or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone}`)
             .single();
 
         if (orgError || !org) {
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
         await supabase
             .from("vendor_otps")
             .delete()
-            .eq("phone", whatsapp_number);
+            .eq("phone", phone);
 
         return NextResponse.json({ orgId: org.id, name: org.name });
     } catch (e: any) {

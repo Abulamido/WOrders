@@ -8,9 +8,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "CafeteriaFlow — WhatsApp Ordering for Cafeterias",
+  title: "CafeteriaFlow — Telegram Ordering for Cafeterias",
   description:
-    "Let your customers browse menus, place orders, and pay — all via WhatsApp. No app downloads. Zero friction.",
+    "Let your customers browse menus, place orders, and pay — all via Telegram. No app downloads. Zero friction.",
 };
 
 export default function RootLayout({

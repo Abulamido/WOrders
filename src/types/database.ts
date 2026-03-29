@@ -24,6 +24,7 @@ export interface Organization {
     business_hours: Record<string, { open: string; close: string }>;
     timezone: string;
     notification_phone: string | null;
+    notification_telegram_id: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -73,6 +74,8 @@ export interface Customer {
     preferences: Record<string, unknown>;
     order_count: number;
     total_spent: number;
+    telegram_id: string | null;
+    telegram_chat_id: string | null;
     last_order_at: string | null;
     created_at: string;
 }
@@ -101,6 +104,7 @@ export interface Order {
     payment_status: PaymentStatus;
     stripe_payment_intent_id: string | null;
     pickup_time: string | null;
+    telegram_chat_id: string | null;
     created_at: string;
     updated_at: string;
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
-import { sendTextMessage } from "@/lib/whatsapp-sender";
+import { sendMessage } from "@/lib/telegram-sender";
 import { formatCurrency } from "@/lib/utils";
 
 /**
@@ -16,12 +16,12 @@ export async function GET(req: NextRequest) {
 
     const supabase = createServiceClient();
 
-    // 1. Get all active organizations with notification phones
+    // 1. Get all active organizations with notification Telegram IDs
     const { data: orgs } = await supabase
         .from("organizations")
         .select("*")
         .eq("is_active", true)
-        .not("notification_phone", "is", null);
+        .not("notification_telegram_id", "is", null);
 
     if (!orgs) return NextResponse.json({ message: "No orgs found" });
 
@@ -61,11 +61,11 @@ export async function GET(req: NextRequest) {
             .map(([name, qty]) => `• ${name} (${qty})`)
             .join("\n");
 
-        // 4. Send WhatsApp Summary
+        // 4. Send Telegram Summary
         const summaryMsg = `📊 *Daily Sales Summary: ${org.name}*\n\n💰 Total Sales: ${formatCurrency(totalSales)}\n📦 Orders: ${orderCount}\n\n🔝 Top Items:\n${topItems || "None"}\n\n_Keep up the great work!_ 🚀`;
 
         try {
-            await sendTextMessage(org.notification_phone!, summaryMsg);
+            await sendMessage(org.notification_telegram_id!, summaryMsg);
             results.push({ org: org.name, status: "Sent" });
         } catch (err: any) {
             results.push({ org: org.name, status: "Error", error: err.message });

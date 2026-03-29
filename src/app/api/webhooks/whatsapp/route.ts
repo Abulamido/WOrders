@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { processMessage } from "@/lib/whatsapp-processor";
-import fs from "fs";
-import path from "path";
 import crypto from "crypto";
-
-const logFile = path.join(process.cwd(), "webhook_debug.log");
 
 // Basic in-memory rate limiting (max 10 requests per minute per phone)
 // Note: In a true serverless environment, this resets per edge function instance. 
@@ -54,8 +50,10 @@ export async function GET(req: NextRequest) {
  * POST — Receive incoming WhatsApp messages.
  */
 export async function POST(req: NextRequest) {
+    console.log("DEBUG: Webhook POST received");
     try {
         const rawBody = await req.text(); // Read raw string for signature verification
+        console.log("DEBUG: Raw Body:", rawBody);
         let body;
 
         try {
@@ -80,13 +78,13 @@ export async function POST(req: NextRequest) {
                 .digest('hex');
 
             if (signature !== `sha256=${expected}`) {
-                fs.appendFileSync(logFile, `[${new Date().toISOString()}] Signature mismatch\n`);
+                console.error("Signature mismatch");
                 return new NextResponse("Invalid Signature", { status: 403 });
             }
         }
 
         const logMsg = `[${new Date().toISOString()}] Incoming POST\nRAW: ${rawBody}\n`;
-        fs.appendFileSync(logFile, logMsg);
+        console.log(logMsg);
 
         // Extract metadata safely
         const messageType = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.type || "unknown";
@@ -101,24 +99,13 @@ export async function POST(req: NextRequest) {
         if (messageId) {
             // 2. Rate limiting check
             if (fromPhone && !checkRateLimit(fromPhone)) {
-                fs.appendFileSync(logFile, `[${new Date().toISOString()}] Rate limited: ${fromPhone}\n`);
+                console.warn(`Rate limited: ${fromPhone}`);
                 return new NextResponse("Rate limit exceeded", { status: 429 });
             }
 
-            // 3. Idempotency check 
-            const { data: exists } = await supabase
-                .from("webhook_logs")
-                .select("id")
-                .eq("message_id", messageId)
-                .single();
-
-            if (exists) {
-                fs.appendFileSync(logFile, `[${new Date().toISOString()}] Duplicate message ID: ${messageId}\n`);
-                return NextResponse.json({ status: "already_processed" });
-            }
-
-            // Pre-insert into webhook_logs to prevent race conditions during processing
-            await supabase.from("webhook_logs").insert({ message_id: messageId });
+            // 3. Temporarily bypassed Idempotency check for MVP
+            // (The webhook_logs table does not exist in the current schema)
+            console.log(`Processing message ID: ${messageId}`);
 
             // Original generic logging
             const { error: logError } = await supabase.from("whatsapp_logs").insert({
@@ -130,7 +117,7 @@ export async function POST(req: NextRequest) {
             });
 
             if (logError) {
-                fs.appendFileSync(logFile, `Supabase Log Error: ${JSON.stringify(logError)}\n`);
+                console.error("Supabase Log Error:", logError);
             }
 
             // 4. Process each message
@@ -147,8 +134,21 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ status: "ok" });
     } catch (error: any) {
         const errLog = `CRITICAL WEBHOOK ERROR: ${error.message}\n${error.stack}\n`;
-        fs.appendFileSync(logFile, errLog);
         console.error(errLog);
+
+        try {
+            const supabase = createServiceClient();
+            await supabase.from("whatsapp_logs").insert({
+                org_id: null as unknown as string,
+                phone: "DEBUG",
+                direction: "incoming",
+                payload: { error_msg: error.message, stack: String(error.stack) } as any,
+                status: "CRASH",
+            });
+        } catch (dbError) {
+            console.error("Failed to write to DB:", dbError);
+        }
+
         return NextResponse.json({ status: "error" }, { status: 500 });
     }
 }

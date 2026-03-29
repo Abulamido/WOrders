@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "CafeteriaFlow — Telegram & WhatsApp Ordering for Cafeterias",
+  title: "CafeteriaFlow — Telegram Ordering for Cafeterias",
   description:
-    "Let your customers browse menus, place orders, and pay — all via Telegram or WhatsApp. No app downloads. Zero friction. Built for cafeterias.",
+    "Let your customers browse menus, place orders, and pay — all via Telegram. No app downloads. Zero friction. Built for cafeterias.",
 };
 
 export default function LandingPage() {
@@ -69,24 +69,18 @@ export default function LandingPage() {
           >
             Start your free restaurant →
           </Link>
-          <a
-            href="https://t.me/Cafteriaflow_bot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-8 py-4 border border-blue-400/20 hover:border-blue-400/40 rounded-2xl text-lg font-medium text-blue-300 hover:text-blue-200 transition-all duration-200 hover:-translate-y-0.5"
+          <Link
+            href="/onboarding"
+            className="px-8 py-4 border border-teal-400/20 hover:border-teal-400/40 rounded-2xl text-lg font-medium text-teal-300 hover:text-teal-200 transition-all duration-200 hover:-translate-y-0.5"
           >
-            🤖 Try the Telegram Bot
-          </a>
+            📱 Get Your Telegram Link
+          </Link>
         </div>
 
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm font-medium text-gray-400">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/15">
-            <span>🤖</span>
-            <span>Live on Telegram</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/15">
-            <span>💬</span>
-            <span>WhatsApp Coming Soon</span>
+            <span>🔹</span>
+            <span>Powered by Telegram</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
             <span>🔒</span>
@@ -108,10 +102,10 @@ export default function LandingPage() {
           {[
             {
               step: "01",
-              icon: "🤖",
-              title: "Customer opens your bot",
+              icon: "📱",
+              title: "Customer scans your QR",
               description:
-                'Customer taps your Telegram bot link. One tap to /start and they instantly see your full menu with prices.',
+                'Customer scans a QR code or taps your Telegram link. One tap to start the bot and they instantly see your full menu.',
             },
             {
               step: "02",
@@ -125,7 +119,7 @@ export default function LandingPage() {
               icon: "🔔",
               title: "You manage & fulfill",
               description:
-                'See orders in your dashboard OR right in Telegram. Update status and customers get notified automatically.',
+                "See orders in your dashboard OR right in your own Telegram. Update status and customers get notified automatically.",
             },
           ].map((item) => (
             <div
@@ -160,7 +154,7 @@ export default function LandingPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
-            { icon: "🤖", title: "Telegram Bot Ordering", desc: "Customers browse, customize, and order entirely inside Telegram" },
+            { icon: "📱", title: "Telegram Ordering", desc: "Customers browse, customize, and order entirely inside Telegram" },
             { icon: "📋", title: "Visual Menu Builder", desc: "Build your menu with items, variants, and modifiers from the dashboard" },
             { icon: "💳", title: "Instant Payments", desc: "Stripe-powered secure checkout — pay directly from Telegram" },
             { icon: "📊", title: "Live Analytics", desc: "Revenue, peak hours, top items — all real-time on your dashboard" },
@@ -200,7 +194,7 @@ export default function LandingPage() {
               price: "Free",
               period: "during beta",
               desc: "Perfect for getting started",
-              features: ["Telegram bot ordering", "Up to 100 orders/month", "Menu builder", "Basic analytics", "Email support"],
+              features: ["Telegram ordering", "Up to 100 orders/month", "Menu builder", "Basic analytics", "Email support"],
               popular: false,
             },
             {
@@ -208,7 +202,7 @@ export default function LandingPage() {
               price: "$49",
               period: "/mo",
               desc: "For busy restaurants",
-              features: ["Unlimited orders", "Telegram + WhatsApp channels", "Advanced analytics & exports", "Priority support", "Custom prep times"],
+              features: ["Unlimited orders", "Telegram ordering channel", "Advanced analytics & exports", "Priority support", "Custom prep times"],
               popular: true,
             },
             {
@@ -216,7 +210,7 @@ export default function LandingPage() {
               price: "$149",
               period: "/mo",
               desc: "Multi-location power",
-              features: ["Multi-location management", "API access", "Custom branding on bot", "Dedicated support", "SLA guarantee"],
+              features: ["Multi-location management", "API access", "Custom branding on Telegram", "Dedicated support", "SLA guarantee"],
               popular: false,
             },
           ].map((plan) => (
@@ -285,14 +279,6 @@ export default function LandingPage() {
           >
             Create your restaurant →
           </Link>
-          <a
-            href="https://t.me/Cafteriaflow_bot"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-10 py-4 border border-white/10 hover:border-white/20 text-white font-medium rounded-2xl text-lg transition-all duration-200 hover:-translate-y-0.5"
-          >
-            🤖 Try the Bot First
-          </a>
         </div>
       </section>
 
@@ -305,7 +291,7 @@ export default function LandingPage() {
           </span>
         </div>
         <p className="text-xs text-gray-600">
-          © 2026 CafeteriaFlow. Telegram & WhatsApp ordering for restaurants.
+          © 2026 CafeteriaFlow. Telegram ordering for restaurants.
         </p>
       </footer>
     </div>

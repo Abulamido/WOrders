@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { stripe } from "@/lib/stripe";
-import { sendTextMessage } from "@/lib/whatsapp-sender";
+import { sendMessage } from "@/lib/telegram-sender";
 import Stripe from "stripe";
 
 /**
@@ -53,12 +53,21 @@ export async function POST(req: NextRequest) {
                         .select("*, organizations(*)")
                         .single();
 
-                    if (order && customerPhone) {
+                    if (order) {
+                        const chatId = order.telegram_chat_id;
                         // Notify customer
-                        await sendTextMessage(
-                            customerPhone,
-                            `✅ Payment received! Your order is confirmed.\n\n📋 Order ${orderId.slice(0, 6).toUpperCase()}\n⏰ Estimated pickup: ${order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "Soon"}\n\nWe'll notify you when it's ready! 🎉`
-                        );
+                        if (chatId) {
+                            const customerMsg = `✅ *Payment received!* Your order from *${order.organizations?.name}* is confirmed.\n\n📋 Order #${orderId.slice(0, 8).toUpperCase()}\n⏰ Estimated pickup: ${order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "Soon"}\n\nWe'll notify you when it's ready! 🎉`;
+                            await sendMessage(chatId as unknown as string, customerMsg).catch(console.error);
+                        }
+
+                        // Notify Vendor (using org.notification_telegram_id)
+                        if (order.organizations?.notification_telegram_id) {
+                            const vendorChatId = order.organizations.notification_telegram_id;
+                            const vendorMsg = `🔔 *New Order Paid!* (#${orderId.slice(0, 8).toUpperCase()})\n\n⏰ Pickup: ${order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "Soon"}\n💰 Total: $${(order.total_amount || 0).toFixed(2)}\n\nCheck your dashboard for details.`;
+
+                            await sendMessage(vendorChatId as unknown as string, vendorMsg).catch(console.error);
+                        }
 
                         // Update customer stats
                         await supabase
@@ -94,15 +103,17 @@ export async function POST(req: NextRequest) {
                 const customerPhone = intent.metadata?.customer_phone;
 
                 if (orderId) {
-                    await supabase
+                    const { data: order } = await supabase
                         .from("orders")
                         .update({ payment_status: "failed" })
-                        .eq("id", orderId);
+                        .eq("id", orderId)
+                        .select("telegram_chat_id")
+                        .single();
 
-                    if (customerPhone) {
-                        await sendTextMessage(
-                            customerPhone,
-                            `❌ Payment failed for your order. Please try again or use a different payment method.`
+                    if (order?.telegram_chat_id) {
+                        await sendMessage(
+                            order.telegram_chat_id as unknown as string,
+                            `❌ *Payment failed* for your order. Please try again or use a different payment method.`
                         );
                     }
                 }
