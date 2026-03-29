@@ -39,3 +39,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# logs and debug artifacts
+*.log
+*.log.*
+crash-analysis*.txt
+err*.log
+error_*.txt
+test-out.log
+test_server.log
+vercel_env.txt
+webhook-payload.json
+webhook_debug.log
+webhook_output.html
+recent-*.json
+ngrok*.log
+server.log
+
+# scripts with secrets (never commit)
+scripts/set-vercel-env.ps1
+scripts/set-vercel.js
+scripts/create_otps.js
+test-whatsapp-flow.ts
