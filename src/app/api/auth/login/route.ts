@@ -11,21 +11,28 @@ const OTP_CONFIG = {
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
-        const { phone } = await req.json();
+        const { phone: rawPhone } = await req.json();
 
-        if (!phone) {
+        if (!rawPhone) {
             return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
         }
 
-        // 1. Verify organization exists (by whatsapp_number or notification_phone)
+        // Normalize phone: Remove everything but digits, then ensure it starts with '+'
+        // Or just keep it as digits for easier matching if that's how it's stored.
+        // Let's try matching both exact and stripped.
+        const phone = rawPhone.replace(/\D/g, "");
+        const phoneWithPlus = `+${phone}`;
+
+        // 1. Verify organization exists
         const { data: org, error: orgError } = await supabase
             .from("organizations")
             .select("id, name, whatsapp_number, notification_phone, notification_telegram_id")
-            .or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone}`)
+            .or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone},whatsapp_number.eq.${phoneWithPlus},notification_phone.eq.${phoneWithPlus}`)
             .eq("is_active", true)
             .single();
 
         if (orgError || !org) {
+            console.error("Org lookup error for phone:", phone, orgError);
             return NextResponse.json({ error: "Organization not found for this phone number." }, { status: 404 });
         }
 

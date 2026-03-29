@@ -76,20 +76,45 @@ export async function processTelegramUpdate(update: any) {
         const { chat, text, contact, from } = update.message;
         const chatId = chat.id;
 
-        // --- DEEP LINKING CHECK (/start slug) ---
+        // --- DEEP LINKING CHECK (/start slug or /start vendor_{id}) ---
         if (text && text.startsWith("/start ")) {
-            const slug = text.replace("/start ", "").trim();
-            console.log(`DEBUG: Processing /start for slug: ${slug}`);
+            const payload = text.replace("/start ", "").trim();
+            
+            // 1. Handle Vendor Linking
+            if (payload.startsWith("vendor_")) {
+                const orgId = payload.replace("vendor_", "").trim();
+                const { error: orgError } = await supabase
+                    .from("organizations")
+                    .update({ notification_telegram_id: chatId })
+                    .eq("id", orgId);
+
+                if (orgError) {
+                    console.error("Vendor link error:", orgError);
+                    await sendMessage(chatId, "❌ Failed to link your vendor account via link. Please use the dashboard ID.");
+                } else {
+                    await sendMessage(chatId, "✅ *Vendor Authorized & Linked!*\n\nYou will now receive real-time order notifications for your cafeteria.");
+                }
+                return;
+            }
+
+            // 2. Handle Customer Startup (Slug)
+            console.log(`DEBUG: Processing /start for slug: ${payload}`);
             
             const { data: organization, error: orgError } = await supabase
                 .from("organizations")
                 .select("*")
-                .eq("slug", slug)
+                .eq("slug", payload)
                 .single();
 
             if (orgError || !organization) {
                 console.error("Organization lookup error:", orgError);
                 await sendMessage(chatId, "❌ Sorry, this cafeteria is not found or inactive.");
+                return;
+            }
+
+            // Approval Check
+            if (organization.approval_status !== "approved") {
+                await sendMessage(chatId, "⏳ *Kitchen Under Review*\n\nThis cafeteria is currently being set up or is under review by our team. Please check back soon!");
                 return;
             }
 
@@ -430,6 +455,13 @@ async function finalizeOrder(chatId: number, org: Organization, session: Session
     const subtotal = session.cart.reduce((sum, item) => sum + item.total_price, 0);
     const taxAmount = Math.round(subtotal * 0.08 * 100) / 100; // 8% tax
     const deliveryFee = session.orderType === "delivery" ? 5.00 : 0.00;
+    
+    // Monetization: Calculate Platform Fee (Revenue Share)
+    // The vendor pays this 5%, so it is NOT added to the customer's totalAmount.
+    const platformFeePercent = org.platform_fee_percent || 5.0;
+    const platformFee = Math.round((subtotal * (platformFeePercent / 100)) * 100) / 100;
+    
+    // Customer pays Subtotal + Tax + Delivery. Platform Fee is deducted from vendor gross later.
     const totalAmount = Math.round((subtotal + taxAmount + deliveryFee) * 100) / 100;
 
     const { data: order, error } = await supabase
@@ -443,6 +475,7 @@ async function finalizeOrder(chatId: number, org: Organization, session: Session
             subtotal,
             tax_amount: taxAmount,
             delivery_fee: deliveryFee,
+            platform_fee: platformFee, // Assuming we added this column in migration
             total_amount: totalAmount,
             status: "pending",
             payment_status: session.paymentMethod === "cash" ? "cash_on_pickup" : "pending",

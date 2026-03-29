@@ -25,6 +25,9 @@ export interface Organization {
     timezone: string;
     notification_phone: string | null;
     notification_telegram_id: string | null;
+    approval_status: "pending" | "approved" | "rejected";
+    subscription_status: "active" | "past_due" | "canceled";
+    platform_fee_percent: number;
     created_at: string;
     updated_at: string;
 }
@@ -99,11 +102,16 @@ export interface Order {
     items_json: OrderItem[];
     subtotal: number;
     tax_amount: number;
+    delivery_fee: number;
+    platform_fee: number;
     total_amount: number;
     status: OrderStatus;
     payment_status: PaymentStatus;
     stripe_payment_intent_id: string | null;
     pickup_time: string | null;
+    order_type: "pickup" | "delivery";
+    delivery_address: string | null;
+    payment_method: "online" | "cash";
     telegram_chat_id: string | null;
     created_at: string;
     updated_at: string;
