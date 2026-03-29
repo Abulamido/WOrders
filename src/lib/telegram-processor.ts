@@ -26,11 +26,17 @@ interface CartItem {
 
 interface Session {
     orgId: string;
-    state: "welcome" | "idle" | "browsing" | "category" | "item_selected" | "variant" | "cart" | "checkout" | "awaiting_payment";
+    state: "welcome" | "idle" | "browsing" | "category" | "item_selected" | "variant" | "cart" | "checkout_name" | "checkout_phone" | "checkout_type" | "checkout_address" | "checkout_payment" | "awaiting_payment";
     selectedCategory?: string;
     selectedItem?: MenuItem;
     cart: CartItem[];
     pickupTime?: string;
+    // New complex checkout fields
+    customerName?: string;
+    customerPhone?: string;
+    orderType?: "pickup" | "delivery";
+    deliveryAddress?: string;
+    paymentMethod?: "online" | "cash";
 }
 
 const sessions = new Map<string, Session>();
@@ -41,6 +47,22 @@ function getSession(chatId: string | number, orgId: string): Session {
         sessions.set(key, { orgId, state: "idle", cart: [] });
     }
     return sessions.get(key)!;
+}
+
+function getActiveSession(chatId: string | number): Session | undefined {
+    // Find the session currently engaged in checkout for this user
+    for (const [key, session] of sessions.entries()) {
+        if (key.startsWith(`${chatId}:`) && session.state.startsWith("checkout_")) {
+            return session;
+        }
+    }
+    // Fallback to any session for this user
+    for (const [key, session] of sessions.entries()) {
+        if (key.startsWith(`${chatId}:`)) {
+            return session;
+        }
+    }
+    return undefined;
 }
 
 /**
@@ -97,24 +119,21 @@ export async function processTelegramUpdate(update: any) {
         }
 
         // --- CONTACT (Phone sharing) ---
-        if (contact) {
-            console.log(`DEBUG: Received share contact for chatId: ${chatId}. Phone: ${contact.phone_number}`);
-            const phone = contact.phone_number;
-            
-            let sessionFound = false;
-            for (const [key, session] of sessions) {
-                if (key.startsWith(`${chatId}:`)) {
-                    console.log(`DEBUG: Found active session for chat ${chatId} with org ${session.orgId}`);
-                    await handleContactShared(chatId, phone, session.orgId);
-                    sessionFound = true;
-                }
+        if (contact && contact.phone_number) {
+            const activeSession = getActiveSession(chatId);
+            if (activeSession && activeSession.state === "checkout_phone") {
+                await processCheckoutInput(chatId, contact.phone_number, activeSession);
+                return;
             }
-            
-            if (!sessionFound) {
-                console.warn(`WARN: No active session found for chat ${chatId} during contact sharing.`);
-                await sendMessage(chatId, "Please start the ordering process by clicking a link or scanning a QR code first.");
+        }
+
+        // --- TEXT INPUT STATE MACHINE ---
+        if (text && !text.startsWith("/")) {
+            const activeSession = getActiveSession(chatId);
+            if (activeSession && activeSession.state.startsWith("checkout_")) {
+                await processCheckoutInput(chatId, text, activeSession);
+                return;
             }
-            return;
         }
 
         // --- FALLBACK ---
@@ -133,6 +152,10 @@ export async function processTelegramUpdate(update: any) {
         try {
             if (["menu", "cart", "checkout", "history"].includes(action)) {
                 orgId = payload;
+            } else if (["checkout_type", "checkout_payment"].includes(action)) {
+                const activeSession = getActiveSession(chatId);
+                if (!activeSession) return;
+                orgId = activeSession.orgId;
             } else if (action === "cat") {
                 const { data: catData } = await supabase.from("categories").select("org_id").eq("id", payload).single();
                 if (!catData) throw new Error("Category not found");
@@ -174,7 +197,15 @@ export async function processTelegramUpdate(update: any) {
                     await showCartSummary(chatId, org, session);
                     break;
                 case "checkout":
-                    await handleCheckout(chatId, org, session);
+                    await handleCheckoutStart(chatId, org, session);
+                    break;
+                case "checkout_type":
+                    session.orderType = payload as "pickup" | "delivery";
+                    await advanceCheckoutState(chatId, org, session);
+                    break;
+                case "checkout_payment":
+                    session.paymentMethod = payload as "online" | "cash";
+                    await finalizeOrder(chatId, org, session);
                     break;
                 case "accept":
                     await handleOrderAction(chatId, org, payload, "accepted");
@@ -209,30 +240,7 @@ async function handleStart(chatId: number, from: any, org: Organization) {
     });
 }
 
-/** Handle phone number collection */
-async function handleContactShared(chatId: number, phone: string, orgId: string) {
-    const supabase = createServiceClient();
-    
-    // Upsert customer (key by org_id and phone)
-    const { error } = await supabase
-        .from("customers")
-        .upsert({
-            org_id: orgId,
-            phone: phone,
-            telegram_chat_id: chatId,
-            is_active: true
-        });
-
-    if (error) {
-        console.error("Customer upsert error:", error);
-        await sendMessage(chatId, "Error saving contact. Please try again.");
-    } else {
-        await sendMessage(chatId, "✅ Thanks! Your phone number is verified. Now you can place your order.", {
-            reply_markup: { remove_keyboard: true }
-        });
-        // Now show menu or return to cart
-    }
-}
+/** Removed V1 handleContactShared as it is handled by processCheckoutInput */
 
 /** Send categories as inline buttons */
 async function sendCategories(chatId: number, org: Organization) {
@@ -337,11 +345,81 @@ async function showCartSummary(chatId: number, org: Organization, session: Sessi
     });
 }
 
-/** Handle Checkout */
-async function handleCheckout(chatId: number, org: Organization, session: Session) {
+/** MULTI-STEP CHECKOUT FLOW */
+
+async function handleCheckoutStart(chatId: number, org: Organization, session: Session) {
+    if (session.cart.length === 0) {
+        await sendMessage(chatId, "Your cart is empty.");
+        return;
+    }
+    session.state = "checkout_name";
+    await sendMessage(chatId, "📝 Let's get your order ready!\n\nPlease reply with your *Full Name*.");
+}
+
+async function processCheckoutInput(chatId: number, input: string, session: Session) {
+    const supabase = createServiceClient();
+    const { data: org } = await supabase.from("organizations").select("*").eq("id", session.orgId).single();
+    if (!org) return;
+
+    if (session.state === "checkout_name") {
+        session.customerName = input;
+        session.state = "checkout_phone";
+        await requestContact(chatId, "📱 Great! Now please share your *Phone Number* (tap the button below or type it).");
+        return;
+    }
+    
+    if (session.state === "checkout_phone") {
+        session.customerPhone = input;
+        // Upsert customer
+        await supabase.from("customers").upsert({
+            org_id: session.orgId,
+            phone: input,
+            name: session.customerName,
+            telegram_chat_id: chatId,
+            is_active: true
+        });
+
+        session.state = "checkout_type";
+        const buttons = [
+            [{ text: "🚶 Pick Up", callback_data: `checkout_type:pickup` }],
+            [{ text: "🚚 Delivery", callback_data: `checkout_type:delivery` }]
+        ];
+        await sendMessage(chatId, "How would you like to receive your order?", {
+            reply_markup: { inline_keyboard: buttons, remove_keyboard: true }
+        });
+        return;
+    }
+
+    if (session.state === "checkout_address") {
+        session.deliveryAddress = input;
+        // For delivery, payment is strictly online
+        session.paymentMethod = "online";
+        await finalizeOrder(chatId, org, session);
+        return;
+    }
+}
+
+async function advanceCheckoutState(chatId: number, org: Organization, session: Session) {
+    if (session.state === "checkout_type") {
+        if (session.orderType === "delivery") {
+            session.state = "checkout_address";
+            await sendMessage(chatId, "📍 Please enter your *Delivery Address* (Building, Street, Room).");
+        } else {
+            session.state = "checkout_payment";
+            const buttons = [
+                [{ text: "💳 Pay Online (Card)", callback_data: `checkout_payment:online` }],
+                [{ text: "💵 Pay on Pick Up", callback_data: `checkout_payment:cash` }]
+            ];
+            await sendMessage(chatId, "How would you like to pay?", {
+                reply_markup: { inline_keyboard: buttons }
+            });
+        }
+    }
+}
+
+async function finalizeOrder(chatId: number, org: Organization, session: Session) {
     const supabase = createServiceClient();
     
-    // 1. Check if user has phone number
     const { data: customer } = await supabase
         .from("customers")
         .select("*")
@@ -349,29 +427,30 @@ async function handleCheckout(chatId: number, org: Organization, session: Sessio
         .eq("telegram_chat_id", chatId)
         .single();
 
-    if (!customer || !customer.phone) {
-        await requestContact(chatId, "📱 We need your phone number to process your order. Please tap the button below to share it.");
-        return;
-    }
-
-    // 2. Create actual order in Supabase
     const subtotal = session.cart.reduce((sum, item) => sum + item.total_price, 0);
     const taxAmount = Math.round(subtotal * 0.08 * 100) / 100; // 8% tax
-    const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
+    const deliveryFee = session.orderType === "delivery" ? 5.00 : 0.00;
+    const totalAmount = Math.round((subtotal + taxAmount + deliveryFee) * 100) / 100;
 
     const { data: order, error } = await supabase
         .from("orders")
         .insert({
             org_id: org.id,
-            customer_id: customer.id,
-            customer_phone: customer.phone,
+            customer_id: customer?.id || null,
+            customer_name: session.customerName,
+            customer_phone: session.customerPhone,
             items_json: session.cart,
             subtotal,
             tax_amount: taxAmount,
+            delivery_fee: deliveryFee,
             total_amount: totalAmount,
             status: "pending",
-            payment_status: "pending",
+            payment_status: session.paymentMethod === "cash" ? "cash_on_pickup" : "pending",
+            order_type: session.orderType,
+            delivery_address: session.deliveryAddress || null,
+            payment_method: session.paymentMethod,
             telegram_chat_id: chatId,
+            cart: session.cart
         })
         .select()
         .single();
@@ -382,41 +461,46 @@ async function handleCheckout(chatId: number, org: Organization, session: Sessio
         return;
     }
 
-    // 3. Create Stripe payment link
-    try {
-        const paymentUrl = await createPaymentLink({
-            orderId: order.id,
-            orgName: org.name,
-            items: session.cart.map((item) => ({
-                name: item.name,
-                quantity: item.quantity,
-                price: item.total_price,
-            })),
-            totalAmount,
-            customerPhone: customer.phone,
-        });
+    const summaryText = session.cart.map(i => `• ${i.quantity}x ${i.name}`).join("\n");
 
-        const summaryText = session.cart.map(i => `• ${i.quantity}x ${i.name}`).join("\n");
-        const checkoutMsg = `📋 *Order Draft Created!*\n\n${summaryText}\n\n💰 *Total: ${formatCurrency(totalAmount)}*\n\n💳 *Pay here:* ${paymentUrl}`;
-
-        await sendMessage(chatId, checkoutMsg);
-
-        // 4. Notify Vendor
-        if (org.notification_telegram_id) {
-            const vendorMsg = `🔔 *New Order!* (#${order.id.slice(0, 8)})\n\n👤 From: ${customer.phone}\n\nItems:\n${summaryText}\n\n💰 Total: ${formatCurrency(totalAmount)}`;
-            const vendorButtons = [
-                [{ text: "✅ Accept", callback_data: `accept:${order.id}` }],
-                [{ text: "❌ Reject", callback_data: `reject:${order.id}` }]
-            ];
-            await sendMessage(org.notification_telegram_id as unknown as string, vendorMsg, {
-                reply_markup: { inline_keyboard: vendorButtons }
+    if (session.paymentMethod === "online") {
+        try {
+            const paymentUrl = await createPaymentLink({
+                orderId: order.id,
+                orgName: org.name,
+                items: session.cart.map((item) => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.total_price,
+                })).concat(session.orderType === "delivery" ? [{ name: "Delivery Fee", quantity: 1, price: deliveryFee }] : []),
+                totalAmount,
+                customerPhone: session.customerPhone || "",
             });
-        }
 
-        session.state = "awaiting_payment";
-    } catch (e: any) {
-        console.error("Payment link generation error:", e);
-        await sendMessage(chatId, "❌ Error generating payment link. Please try again.");
+            const checkoutMsg = `📋 *Order Draft Created!*\n\n${summaryText}\n\n🚚 Delivery Fee: ${formatCurrency(deliveryFee)}\n💰 *Total: ${formatCurrency(totalAmount)}*\n\n💳 *Pay here:* ${paymentUrl}`;
+            await sendMessage(chatId, checkoutMsg);
+            session.state = "awaiting_payment";
+        } catch (e: any) {
+            console.error("Payment generation error:", e);
+            await sendMessage(chatId, "❌ Error generating payment link.");
+        }
+    } else {
+        const checkoutMsg = `📋 *Order Confirmed!*\n\n${summaryText}\n\n💰 *Total: ${formatCurrency(totalAmount)}*\n💵 You chose to pay *in cash on pick up*.`;
+        await sendMessage(chatId, checkoutMsg);
+        session.state = "idle";
+        session.cart = []; // clear cart
+    }
+
+    // 4. Notify Vendor
+    if (org.notification_telegram_id) {
+        const vendorMsg = `🔔 *New Order!* (#${order.id.slice(0, 8)})\n\n👤 Customer: ${session.customerName} (${session.customerPhone})\n📦 Type: ${session.orderType === 'delivery' ? '🚚 Delivery' : '🚶 Pick Up'}\n${session.deliveryAddress ? `📍 Address: ${session.deliveryAddress}\n` : ''}💵 Payment: ${session.paymentMethod === 'cash' ? 'Pay on Pick Up' : 'Online'}\n\nItems:\n${summaryText}\n\n💰 Total: ${formatCurrency(totalAmount)}`;
+        const vendorButtons = [
+            [{ text: "✅ Accept", callback_data: `accept:${order.id}` }],
+            [{ text: "❌ Reject", callback_data: `reject:${order.id}` }]
+        ];
+        await sendMessage(org.notification_telegram_id as unknown as string, vendorMsg, {
+            reply_markup: { inline_keyboard: vendorButtons }
+        });
     }
 }
 

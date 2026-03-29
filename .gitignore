@@ -61,3 +61,6 @@ scripts/set-vercel-env.ps1
 scripts/set-vercel.js
 scripts/create_otps.js
 test-whatsapp-flow.ts
+
+.vercel
+.env*.local
