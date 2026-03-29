@@ -449,8 +449,7 @@ async function finalizeOrder(chatId: number, org: Organization, session: Session
             order_type: session.orderType,
             delivery_address: session.deliveryAddress || null,
             payment_method: session.paymentMethod,
-            telegram_chat_id: chatId,
-            cart: session.cart
+            telegram_chat_id: chatId
         })
         .select()
         .single();
