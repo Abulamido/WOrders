@@ -126,21 +126,40 @@ export async function processTelegramUpdate(update: any) {
         const { id, from, message, data } = update.callback_query;
         const chatId = message.chat.id;
 
-        // Callback data is usually "action:org_id:payload"
-        const [action, orgId, payload] = data.split(":");
-        const session = getSession(chatId, orgId);
-        const { data: org } = await supabase
-            .from("organizations")
-            .select("*")
-            .eq("id", orgId)
-            .single();
-
-        if (!org) {
-            await answerCallbackQuery(id, "Error: Organization not found.");
-            return;
-        }
+        // Callback data is usually "action:payload"
+        const [action, payload] = data.split(":");
+        let orgId = "";
 
         try {
+            if (["menu", "cart", "checkout", "history"].includes(action)) {
+                orgId = payload;
+            } else if (action === "cat") {
+                const { data: catData } = await supabase.from("categories").select("org_id").eq("id", payload).single();
+                if (!catData) throw new Error("Category not found");
+                orgId = catData.org_id;
+            } else if (action === "item") {
+                const { data: itemData } = await supabase.from("menu_items").select("org_id").eq("id", payload).single();
+                if (!itemData) throw new Error("Item not found");
+                orgId = itemData.org_id;
+            } else if (["accept", "reject"].includes(action)) {
+                const { data: orderData } = await supabase.from("orders").select("org_id").eq("id", payload).single();
+                if (!orderData) throw new Error("Order not found");
+                orgId = orderData.org_id;
+            } else {
+                return;
+            }
+
+            const session = getSession(chatId, orgId);
+            const { data: org } = await supabase
+                .from("organizations")
+                .select("*")
+                .eq("id", orgId)
+                .single();
+
+            if (!org) {
+                await answerCallbackQuery(id, "Error: Organization not found.");
+                return;
+            }
             switch (action) {
                 case "menu":
                     await sendCategories(chatId, org);
@@ -181,8 +200,8 @@ async function handleStart(chatId: number, from: any, org: Organization) {
     
     // We'll use inline keyboards for the main flow
     const buttons = [
-        [{ text: "📋 Browse Menu", callback_data: `menu:${org.id}:` }],
-        [{ text: "📦 My Orders", callback_data: `history:${org.id}:` }],
+        [{ text: "📋 Browse Menu", callback_data: `menu:${org.id}` }],
+        [{ text: "📦 My Orders", callback_data: `history:${org.id}` }],
     ];
 
     await sendMessage(chatId, welcomeMsg, {
@@ -232,7 +251,7 @@ async function sendCategories(chatId: number, org: Organization) {
 
     const buttons = categories.map(cat => ([{
         text: cat.name,
-        callback_data: `cat:${org.id}:${cat.id}`
+        callback_data: `cat:${cat.id}`
     }]));
 
     await sendMessage(chatId, "🍽️ Select a category:", {
@@ -257,7 +276,7 @@ async function handleCategorySelect(chatId: number, org: Organization, catId: st
 
     const buttons = items.map(item => ([{
         text: `${item.name} - ${formatCurrency(item.price)}`,
-        callback_data: `item:${org.id}:${item.id}`
+        callback_data: `item:${item.id}`
     }]));
 
     await sendMessage(chatId, "🛒 Select an item to add to your cart:", {
@@ -288,8 +307,8 @@ async function handleItemSelect(chatId: number, org: Organization, itemId: strin
     
     const text = `✅ Added *${item.name}* to your cart.`;
     const buttons = [
-        [{ text: "🛒 View Cart & Checkout", callback_data: `cart:${org.id}:` }],
-        [{ text: "➕ Add More Items", callback_data: `menu:${org.id}:` }]
+        [{ text: "🛒 View Cart & Checkout", callback_data: `cart:${org.id}` }],
+        [{ text: "➕ Add More Items", callback_data: `menu:${org.id}` }]
     ];
 
     await sendMessage(chatId, text, {
@@ -309,8 +328,8 @@ async function showCartSummary(chatId: number, org: Organization, session: Sessi
 
     const text = `🛒 *Your Cart*\n\n${summary}\n\n💰 *Total: ${formatCurrency(total)}*`;
     const buttons = [
-        [{ text: "💳 Checkout", callback_data: `checkout:${org.id}:` }],
-        [{ text: "➕ Add More Items", callback_data: `menu:${org.id}:` }]
+        [{ text: "💳 Checkout", callback_data: `checkout:${org.id}` }],
+        [{ text: "➕ Add More Items", callback_data: `menu:${org.id}` }]
     ];
 
     await sendMessage(chatId, text, {
@@ -386,8 +405,8 @@ async function handleCheckout(chatId: number, org: Organization, session: Sessio
         if (org.notification_telegram_id) {
             const vendorMsg = `🔔 *New Order!* (#${order.id.slice(0, 8)})\n\n👤 From: ${customer.phone}\n\nItems:\n${summaryText}\n\n💰 Total: ${formatCurrency(totalAmount)}`;
             const vendorButtons = [
-                [{ text: "✅ Accept", callback_data: `accept:${org.id}:${order.id}` }],
-                [{ text: "❌ Reject", callback_data: `reject:${org.id}:${order.id}` }]
+                [{ text: "✅ Accept", callback_data: `accept:${order.id}` }],
+                [{ text: "❌ Reject", callback_data: `reject:${order.id}` }]
             ];
             await sendMessage(org.notification_telegram_id as unknown as string, vendorMsg, {
                 reply_markup: { inline_keyboard: vendorButtons }
