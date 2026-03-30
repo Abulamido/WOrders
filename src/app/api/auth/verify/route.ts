@@ -11,7 +11,7 @@ const OTP_CONFIG = {
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
-        const { phone, code } = await req.json();
+        const { phone, code, orgId } = await req.json();
 
         if (!phone || !code) {
             return NextResponse.json({ error: "Phone number and code are required" }, { status: 400 });
@@ -74,11 +74,17 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. Code is correct! Find the organization
-        const { data: org, error: orgError } = await supabase
+        let query = supabase
             .from("organizations")
-            .select("id, name")
-            .or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone}`)
-            .single();
+            .select("id, name");
+            
+        if (orgId) {
+            query = query.eq("id", orgId);
+        } else {
+            query = query.or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone}`);
+        }
+
+        const { data: org, error: orgError } = await query.single();
 
         if (orgError || !org) {
             return NextResponse.json({ error: "Associated organization not found" }, { status: 404 });

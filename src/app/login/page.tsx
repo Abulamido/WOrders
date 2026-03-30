@@ -11,10 +11,12 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [phone, setPhone] = useState("");
     const [otpCode, setOtpCode] = useState("");
-    const [step, setStep] = useState(1); // 1: Number, 2: Code
+    const [step, setStep] = useState(1); // 1: Number, 1.5: Select, 2: Code
+    const [availableOrgs, setAvailableOrgs] = useState<any[]>([]);
+    const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 
-    const handleSendOTP = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSendOTP = async (e?: React.FormEvent, selectedOrgId?: string) => {
+        if (e) e.preventDefault();
         setLoading(true);
         setError("");
 
@@ -22,14 +24,21 @@ export default function LoginPage() {
             const res = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone }),
+                body: JSON.stringify({ phone, orgId: selectedOrgId }),
             });
 
+            const data = await res.json();
+
             if (res.ok) {
-                setStep(2);
+                if (data.requireSelection) {
+                    setAvailableOrgs(data.organizations);
+                    setStep(1.5);
+                } else {
+                    setStep(2);
+                }
+                if (selectedOrgId) setSelectedOrgId(selectedOrgId);
             } else {
-                const errData = await res.json();
-                setError(errData.error || "Failed to find account");
+                setError(data.error || "Failed to find account");
             }
         } catch (err) {
             setError("Something went wrong");
@@ -47,7 +56,7 @@ export default function LoginPage() {
             const res = await fetch("/api/auth/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone, code: otpCode }),
+                body: JSON.stringify({ phone, code: otpCode, orgId: selectedOrgId }),
             });
 
             if (res.ok) {
@@ -115,6 +124,38 @@ export default function LoginPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                ) : step === 1.5 ? (
+                    <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+                        <button
+                            onClick={() => setStep(1)}
+                            className="flex items-center gap-2 text-sm text-gray-500 hover:text-white mb-6 transition-colors"
+                        >
+                            <ArrowLeft size={16} /> Back to number
+                        </button>
+
+                        <div className="text-center mb-8">
+                            <h1 className="text-2xl font-bold mb-3">Which restaurant?</h1>
+                            <p className="text-gray-400">Multiple kitchens found for this number.</p>
+                        </div>
+
+                        <div className="space-y-3">
+                            {availableOrgs.map((org) => (
+                                <button
+                                    key={org.id}
+                                    onClick={() => handleSendOTP(undefined, org.id)}
+                                    className="w-full flex items-center justify-between p-5 bg-[#141420] hover:bg-[#1a1a2a] border border-white/10 rounded-2xl transition-all group"
+                                >
+                                    <div className="flex flex-col items-start">
+                                        <span className="font-bold text-white group-hover:text-emerald-400 transition-colors">
+                                            {org.name}
+                                        </span>
+                                        <span className="text-xs text-gray-500">@{org.slug}</span>
+                                    </div>
+                                    <ChevronRight className="text-gray-600 group-hover:text-emerald-400 transition-colors" size={20} />
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 ) : (
                     <div className="animate-in slide-in-from-right-4 fade-in duration-300">

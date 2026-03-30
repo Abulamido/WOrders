@@ -11,34 +11,44 @@ const OTP_CONFIG = {
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
-        const { phone: rawPhone } = await req.json();
+        const { phone: rawPhone, orgId } = await req.json();
 
         if (!rawPhone) {
             return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
         }
 
-        // Normalize phone: Remove everything but digits, then ensure it starts with '+'
-        // Or just keep it as digits for easier matching if that's how it's stored.
-        // Let's try matching both exact and stripped.
         const phone = rawPhone.replace(/\D/g, "");
         const phoneWithPlus = `+${phone}`;
 
-        // 1. Verify organization exists
-        const { data: org, error: orgError } = await supabase
+        // 1. Verify organization exists (fetch ALL matching)
+        const { data: orgs, error: orgError } = await supabase
             .from("organizations")
-            .select("id, name, whatsapp_number, notification_phone, notification_telegram_id")
+            .select("id, name, slug, notification_telegram_id")
             .or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone},whatsapp_number.eq.${phoneWithPlus},notification_phone.eq.${phoneWithPlus}`)
-            .eq("is_active", true)
-            .single();
+            .eq("is_active", true);
 
-        if (orgError || !org) {
-            console.error("Org lookup error for phone:", phone, orgError);
+        if (orgError || !orgs || orgs.length === 0) {
             return NextResponse.json({ error: "Organization not found for this phone number." }, { status: 404 });
+        }
+
+        // If multiple orgs and NO orgId provided, require selection
+        if (orgs.length > 1 && !orgId) {
+            return NextResponse.json({ 
+                requireSelection: true, 
+                organizations: orgs.map(o => ({ id: o.id, name: o.name, slug: o.slug }))
+            }, { status: 200 });
+        }
+
+        // Use the selected org OR the only one found
+        const org = orgId ? orgs.find(o => o.id === orgId) : orgs[0];
+
+        if (!org) {
+            return NextResponse.json({ error: "Selected organization not found" }, { status: 404 });
         }
 
         if (!org.notification_telegram_id) {
             return NextResponse.json({ 
-                error: "Your Telegram account is not linked. Please open our Telegram bot and type /vendor to link your account first." 
+                error: "Your Telegram account is not linked. Please connect your Telegram in the Admin panel first." 
             }, { status: 403 });
         }
 
