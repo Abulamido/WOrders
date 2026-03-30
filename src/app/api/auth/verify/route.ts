@@ -11,11 +11,13 @@ const OTP_CONFIG = {
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
-        const { phone, code, orgId } = await req.json();
+        const { phone: rawPhone, code, orgId } = await req.json();
 
-        if (!phone || !code) {
+        if (!rawPhone || !code) {
             return NextResponse.json({ error: "Phone number and code are required" }, { status: 400 });
         }
+
+        const phone = rawPhone.replace(/\D/g, "");
 
         // 1. Fetch OTP from DB
         const { data: otp, error: otpError } = await supabase
