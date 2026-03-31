@@ -145,7 +145,7 @@ export async function processMessage(
             session.state = "browsing";
         } else if (userInput.startsWith("cat_")) {
             await handleCategorySelect(from, org, userInput, session);
-        } else if (userInput.startsWith("item_") || session.state === "category") {
+        } else if (userInput.startsWith("item_") || userInput.startsWith("soldout_") || session.state === "category") {
             await handleItemSelect(from, org, userInput, session);
         } else if (userInput.startsWith("var_") || session.state === "variant") {
             await handleVariantSelect(from, org, userInput, session);
@@ -196,9 +196,12 @@ async function handleWelcome(phone: string, org: Organization) {
         buttons.unshift({ id: "reorder", title: "🔄 Reorder Last" });
     }
 
+    const isOpen = org.is_open_manually !== false;
+    const closedNote = !isOpen ? "\n\n⚠️ _We are currently closed. Feel free to browse, but ordering is paused._" : "";
+
     await sendButtonMessage(
         phone,
-        `👋 Welcome back to ${org.name}!\nWhat would you like to do?`,
+        `👋 Welcome back to ${org.name}!\nWhat would you like to do?${closedNote}`,
         buttons
     );
 }
@@ -247,16 +250,16 @@ async function handleCategorySelect(
     session.state = "category";
 
     const supabase = createServiceClient();
+    // Fetch ALL items to show sold-out badges
     const { data: items } = await supabase
         .from("menu_items")
         .select("*")
         .eq("org_id", org.id)
         .eq("category_id", categoryId)
-        .eq("is_available", true)
         .order("sort_order");
 
     if (!items || items.length === 0) {
-        await sendTextMessage(phone, "No items available in this category right now.");
+        await sendTextMessage(phone, "No items in this category right now.");
         session.state = "browsing";
         return;
     }
@@ -269,8 +272,10 @@ async function handleCategorySelect(
             {
                 title: "Items",
                 rows: items.map((item) => ({
-                    id: `item_${item.id}`,
-                    title: `${item.name} - ${formatCurrency(item.price)}`,
+                    id: item.is_available ? `item_${item.id}` : `soldout_${item.id}`,
+                    title: item.is_available
+                        ? `${item.name} - ${formatCurrency(item.price)}`
+                        : `❌ ${item.name} - SOLD OUT`,
                     description: item.description?.slice(0, 72) || undefined,
                 })),
             },
@@ -285,6 +290,12 @@ async function handleItemSelect(
     input: string,
     session: Session
 ) {
+    // Guard: Sold-out items cannot be selected
+    if (input.startsWith("soldout_")) {
+        await sendTextMessage(phone, "❌ Sorry, this item is currently sold out. Please pick something else!");
+        return;
+    }
+
     const itemId = input.replace("item_", "");
 
     const supabase = createServiceClient();
@@ -296,6 +307,12 @@ async function handleItemSelect(
 
     if (!item) {
         await sendTextMessage(phone, "Item not found. Please try again.");
+        return;
+    }
+
+    // Double-check availability
+    if (!item.is_available) {
+        await sendTextMessage(phone, `❌ Sorry, *${item.name}* is currently sold out.`);
         return;
     }
 
@@ -388,6 +405,15 @@ async function handleCartAction(
     session: Session
 ) {
     if (input === "checkout") {
+        // Guard: Store must be open to proceed
+        if (org.is_open_manually === false) {
+            await sendTextMessage(
+                phone,
+                "⚠️ Sorry, we are currently closed and cannot accept orders right now. Please come back when we are open! Your cart has been saved."
+            );
+            return;
+        }
+
         // Ask for pickup time
         await sendButtonMessage(
             phone,

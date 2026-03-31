@@ -12,7 +12,8 @@ import {
     RefreshCw,
     Send,
     AlertTriangle,
-    ExternalLink
+    ExternalLink,
+    Power
 } from "lucide-react";
 import { cn, formatCurrency, formatRelativeTime, shortOrderId } from "@/lib/utils";
 
@@ -126,6 +127,31 @@ export default function OrdersDashboard() {
         [orgId, fetchOrders]
     );
 
+    const toggleStoreStatus = async () => {
+        if (!orgId || !organization) return;
+        
+        const newStatus = !organization.is_open_manually;
+        
+        // Optimistic update
+        setOrganization((prev: any) => ({ ...prev, is_open_manually: newStatus }));
+        
+        try {
+            const res = await fetch("/api/organizations", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ orgId, is_open_manually: newStatus })
+            });
+            
+            if (!res.ok) {
+                // Revert on failure
+                fetchOrders();
+            }
+        } catch (err) {
+            console.error("Failed to toggle store status:", err);
+            fetchOrders();
+        }
+    };
+
     const handleRefresh = () => {
         fetchOrders(true);
     };
@@ -173,7 +199,19 @@ export default function OrdersDashboard() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
                 <div>
-                    <h1 className="text-2xl font-bold">Orders</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-2xl font-bold">Orders</h1>
+                        {organization && (
+                            <div className={cn(
+                                "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                organization.is_open_manually 
+                                    ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" 
+                                    : "bg-red-500/10 text-red-500 border border-red-500/20"
+                            )}>
+                                {organization.is_open_manually ? "Open" : "Closed"}
+                            </div>
+                        )}
+                    </div>
                     <p className="text-gray-400 text-sm mt-1">
                         Manage incoming orders in real-time
                     </p>
@@ -217,16 +255,31 @@ export default function OrdersDashboard() {
 
                     {/* Connect Telegram Button */}
                     {orgId && (
-                        <a
-                            href={`https://t.me/Cafteriaflow_bot?start=vendor_${orgId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0088cc] hover:bg-[#0088cc]/90 text-white text-sm font-bold transition-all shadow-lg shadow-[#0088cc]/10"
-                        >
-                            <Send size={16} />
-                            <span>Connect Telegram</span>
-                            <ExternalLink size={12} className="opacity-50" />
-                        </a>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={toggleStoreStatus}
+                                className={cn(
+                                    "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border",
+                                    organization?.is_open_manually
+                                        ? "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20"
+                                        : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 hover:bg-emerald-500/20"
+                                )}
+                            >
+                                <Power size={16} />
+                                <span>{organization?.is_open_manually ? "Close Shop" : "Open Shop"}</span>
+                            </button>
+
+                            <a
+                                href={`https://t.me/Cafteriaflow_bot?start=vendor_${orgId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0088cc] hover:bg-[#0088cc]/90 text-white text-sm font-bold transition-all shadow-lg shadow-[#0088cc]/10"
+                            >
+                                <Send size={16} />
+                                <span>Connect Telegram</span>
+                                <ExternalLink size={12} className="opacity-50" />
+                            </a>
+                        </div>
                     )}
                 </div>
             </div>

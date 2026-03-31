@@ -14,6 +14,8 @@ import {
     Tag,
     X,
     Loader2,
+    PackageCheck,
+    PackageX
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -397,11 +399,16 @@ export default function MenuBuilder() {
                                 <div className="pt-1 cursor-grab text-gray-600 hover:text-gray-400">
                                     <GripVertical size={16} />
                                 </div>
-                                <div className="w-16 h-16 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                <div className="w-16 h-16 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden relative">
                                     {item.image_url ? (
-                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                        <img src={item.image_url} alt={item.name} className={cn("w-full h-full object-cover", !item.is_available && "grayscale opacity-50")} />
                                     ) : (
                                         <ImageIcon size={20} className="text-gray-600" />
+                                    )}
+                                    {!item.is_available && (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                            <span className="text-[8px] font-black text-white bg-red-600 px-1 rounded-sm rotate-[-15deg]">SOLD OUT</span>
+                                        </div>
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -413,10 +420,10 @@ export default function MenuBuilder() {
                                         <div className="flex items-center gap-1 flex-shrink-0">
                                             <button
                                                 onClick={() => toggleAvailability(item.id)}
-                                                className={cn("p-2 rounded-lg transition-colors", item.is_available ? "text-emerald-400 hover:bg-emerald-500/10" : "text-gray-500 hover:bg-white/5")}
-                                                title={item.is_available ? "Hide item" : "Show item"}
+                                                className={cn("p-2 rounded-lg transition-colors", item.is_available ? "text-emerald-400 hover:bg-emerald-500/10" : "text-amber-500 hover:bg-amber-500/10")}
+                                                title={item.is_available ? "Mark as Sold Out" : "Mark as In Stock"}
                                             >
-                                                {item.is_available ? <Eye size={16} /> : <EyeOff size={16} />}
+                                                {item.is_available ? <PackageCheck size={16} /> : <PackageX size={16} />}
                                             </button>
                                             <button onClick={() => openItemModal(item)} className="p-2 rounded-lg text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 transition-colors">
                                                 <Pencil size={16} />

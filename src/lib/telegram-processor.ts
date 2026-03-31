@@ -193,6 +193,10 @@ export async function processTelegramUpdate(update: any) {
                 const { data: orderData } = await supabase.from("orders").select("org_id").eq("id", payload).single();
                 if (!orderData) throw new Error("Order not found");
                 orgId = orderData.org_id;
+            } else if (action === "noop") {
+                // Sold-out items — just acknowledge the click
+                await answerCallbackQuery(id, "This item is currently sold out.");
+                return;
             } else {
                 return;
             }
@@ -252,7 +256,14 @@ export async function processTelegramUpdate(update: any) {
 
 /** Start Page — Welcome and initial buttons */
 async function handleStart(chatId: number, from: any, org: Organization) {
-    const welcomeMsg = `👋 Welcome to *${org.name}*!\n\nYou can browse our menu and place orders right here in Telegram.`;
+    const isOpen = org.is_open_manually !== false; // Default to open if column doesn't exist
+    
+    let welcomeMsg = `👋 Welcome to *${org.name}*!\n\n`;
+    if (!isOpen) {
+        welcomeMsg += `⚠️ _We are currently closed and not accepting new orders._\nFeel free to browse our menu in the meantime!`;
+    } else {
+        welcomeMsg += `You can browse our menu and place orders right here in Telegram.`;
+    }
     
     // We'll use inline keyboards for the main flow
     const buttons = [
@@ -292,14 +303,14 @@ async function sendCategories(chatId: number, org: Organization) {
     });
 }
 
-/** Handle Category Selection */
+/** Handle Category Selection — Shows all items, marks sold-out ones */
 async function handleCategorySelect(chatId: number, org: Organization, catId: string, session: Session) {
     const supabase = createServiceClient();
+    // Fetch ALL items (including unavailable) to show sold-out badges
     const { data: items } = await supabase
         .from("menu_items")
         .select("*")
         .eq("category_id", catId)
-        .eq("is_available", true)
         .order("sort_order");
 
     if (!items || items.length === 0) {
@@ -307,10 +318,19 @@ async function handleCategorySelect(chatId: number, org: Organization, catId: st
         return;
     }
 
-    const buttons = items.map(item => ([{
-        text: `${item.name} - ${formatCurrency(item.price)}`,
-        callback_data: `item:${item.id}`
-    }]));
+    const buttons = items.map(item => {
+        if (!item.is_available) {
+            // Sold out items — show badge, use a no-op callback
+            return [{
+                text: `❌ ${item.name} — SOLD OUT`,
+                callback_data: `noop:${item.id}`
+            }];
+        }
+        return [{
+            text: `${item.name} - ${formatCurrency(item.price)}`,
+            callback_data: `item:${item.id}`
+        }];
+    });
 
     await sendMessage(chatId, "🛒 Select an item to add to your cart:", {
         reply_markup: { inline_keyboard: buttons }
@@ -327,6 +347,12 @@ async function handleItemSelect(chatId: number, org: Organization, itemId: strin
         .single();
 
     if (!item) return;
+
+    // Guard: Sold-out items cannot be added
+    if (!item.is_available) {
+        await sendMessage(chatId, `❌ Sorry, *${item.name}* is currently sold out.`);
+        return;
+    }
 
     const cartItem: CartItem = {
         item_id: item.id,
@@ -377,6 +403,13 @@ async function handleCheckoutStart(chatId: number, org: Organization, session: S
         await sendMessage(chatId, "Your cart is empty.");
         return;
     }
+
+    // Guard: Store must be open to proceed to checkout
+    if (org.is_open_manually === false) {
+        await sendMessage(chatId, "⚠️ *Sorry, we are currently closed.*\n\nPlease come back when we are open to place your order. Your cart has been saved!");
+        return;
+    }
+
     session.state = "checkout_name";
     await sendMessage(chatId, "📝 Let's get your order ready!\n\nPlease reply with your *Full Name*.");
 }

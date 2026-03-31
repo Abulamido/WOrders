@@ -7,6 +7,7 @@ export type OrderStatus = "pending" | "preparing" | "ready" | "completed" | "can
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 export type PlanType = "starter" | "growth" | "enterprise";
 export type MessageDirection = "incoming" | "outgoing";
+export type PayoutStatus = "pending" | "processing" | "completed" | "rejected";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Json = any;
@@ -28,8 +29,31 @@ export interface Organization {
     approval_status: "pending" | "approved" | "rejected";
     subscription_status: "active" | "past_due" | "canceled";
     platform_fee_percent: number;
+    is_open_manually: boolean;
+    payout_account_details: PayoutAccountDetails | null;
     created_at: string;
     updated_at: string;
+}
+
+export interface PayoutAccountDetails {
+    bank_name: string;
+    account_holder: string;
+    account_number: string;
+    routing_number: string | null;
+    bank_type: "checking" | "savings";
+    updated_at: string;
+}
+
+export interface PayoutRequest {
+    id: string;
+    org_id: string;
+    amount: number;
+    status: PayoutStatus;
+    bank_details: PayoutAccountDetails;
+    notes: string | null;
+    requested_at: string;
+    processed_at: string | null;
+    created_at: string;
 }
 
 export interface Category {
@@ -160,6 +184,11 @@ export interface Database {
                 Row: WhatsAppLog;
                 Insert: Partial<WhatsAppLog>;
                 Update: Partial<WhatsAppLog>;
+            };
+            payout_requests: {
+                Row: PayoutRequest;
+                Insert: Partial<PayoutRequest>;
+                Update: Partial<PayoutRequest>;
             };
         };
     };
