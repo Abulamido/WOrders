@@ -15,6 +15,7 @@ import {
     Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBrand } from "@/lib/brand-context";
 
 const navItems = [
     { href: "/dashboard", label: "Orders", icon: ShoppingBag },
@@ -33,6 +34,7 @@ export default function DashboardLayout({
     const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [orgName, setOrgName] = useState("My Restaurant");
+    const brand = useBrand();
 
     useEffect(() => {
         const storedId = localStorage.getItem("cafeteriaflow_org_id");
@@ -79,9 +81,9 @@ export default function DashboardLayout({
             {/* Mobile header */}
             <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-16 bg-[#0f0f1a]/95 backdrop-blur-xl border-b border-white/5">
                 <div className="flex items-center gap-3">
-                    <span className="text-xl">🌱</span>
-                    <span className="font-bold text-lg bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                        CafeteriaFlow
+                    <span className="text-xl">{brand.icon}</span>
+                    <span className="font-bold text-lg bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+                        {brand.name}
                     </span>
                 </div>
                 <button
@@ -101,9 +103,9 @@ export default function DashboardLayout({
             >
                 {/* Logo */}
                 <div className="flex items-center gap-3 px-6 h-16 border-b border-white/5">
-                    <span className="text-2xl">🌱</span>
-                    <span className="font-bold text-xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                        CafeteriaFlow
+                    <span className="text-2xl">{brand.icon}</span>
+                    <span className="font-bold text-xl bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+                        {brand.name}
                     </span>
                 </div>
 
@@ -141,7 +143,7 @@ export default function DashboardLayout({
                 {/* Bottom section — Dynamic org name + logout */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/5">
                     <div className="flex items-center gap-3 px-3 py-2">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-sm font-bold">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg" style={{ background: `linear-gradient(to bottom right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
                             {initials}
                         </div>
                         <div className="flex-1 min-w-0">

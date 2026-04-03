@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Store, LayoutDashboard, Users, Activity, Lock, KeyRound, Loader2 } from "lucide-react";
+import { LogOut, Store, LayoutDashboard, Users, Activity, Lock, KeyRound, Loader2, Building2 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useState, useEffect } from "react";
 
@@ -112,6 +112,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     >
                         <Users size={20} />
                         <span className="font-medium">Customers</span>
+                    </Link>
+                    <Link
+                        href="/admin/agencies"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors text-purple-400"
+                    >
+                        <Building2 size={20} />
+                        <span className="font-medium">Agencies (SaaS)</span>
                     </Link>
                     <Link
                         href="/admin/activity"

@@ -12,8 +12,35 @@ export type PayoutStatus = "pending" | "processing" | "completed" | "rejected";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Json = any;
 
+export interface Agency {
+    id: string;
+    name: string;
+    slug: string;
+    brand_name: string;
+    brand_logo_url: string | null;
+    brand_icon: string;
+    brand_primary_color: string;
+    brand_secondary_color: string;
+    custom_domain: string | null;
+    telegram_bot_token: string | null;
+    telegram_bot_username: string | null;
+    stripe_secret_key: string | null;
+    stripe_publishable_key: string | null;
+    stripe_webhook_secret: string | null;
+    platform_fee_percent: number;
+    support_email: string | null;
+    support_phone: string | null;
+    owner_name: string | null;
+    owner_phone: string | null;
+    plan: string;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 export interface Organization {
     id: string;
+    agency_id: string | null;
     name: string;
     slug: string;
     whatsapp_number: string;
@@ -155,6 +182,11 @@ export interface WhatsAppLog {
 export interface Database {
     public: {
         Tables: {
+            agencies: {
+                Row: Agency;
+                Insert: Partial<Agency>;
+                Update: Partial<Agency>;
+            };
             organizations: {
                 Row: Organization;
                 Insert: Partial<Organization>;

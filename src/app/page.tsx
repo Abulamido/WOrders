@@ -1,14 +1,21 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { cn } from "@/lib/utils";
+import { DEFAULT_BRAND } from "@/lib/brand";
 
-export const metadata: Metadata = {
-  title: "CafeteriaFlow — Telegram Ordering for Cafeterias",
-  description:
-    "Let your customers browse menus, place orders, and pay — all via Telegram. No app downloads. Zero friction. Built for cafeterias.",
-};
+export default async function LandingPage() {
+  const headersList = await headers();
+  const brandHeader = headersList.get("x-brand-config");
+  let brand = DEFAULT_BRAND;
 
-export default function LandingPage() {
+  if (brandHeader) {
+    try {
+      brand = JSON.parse(decodeURIComponent(brandHeader));
+    } catch (e) {
+      console.error("Failed to decode brand on landing page:", e);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white overflow-hidden">
       {/* Animated gradient background */}
@@ -21,9 +28,9 @@ export default function LandingPage() {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 py-5">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🌱</span>
-          <span className="font-bold text-xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-            CafeteriaFlow
+          <span className="text-2xl">{brand.icon}</span>
+          <span className="font-bold text-xl bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+            {brand.name}
           </span>
         </div>
         <div className="flex items-center gap-4">
@@ -285,13 +292,13 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/5 py-8 px-6 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="text-lg">🌱</span>
-          <span className="font-bold bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-            CafeteriaFlow
+          <span className="text-lg">{brand.icon}</span>
+          <span className="font-bold bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+            {brand.name}
           </span>
         </div>
         <p className="text-xs text-gray-600">
-          © 2026 CafeteriaFlow. Telegram ordering for restaurants.
+          © {new Date().getFullYear()} {brand.name}. Telegram ordering for restaurants.
         </p>
       </footer>
     </div>

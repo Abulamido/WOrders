@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
         // 1. Verify organization exists (fetch ALL matching)
         const { data: orgs, error: orgError } = await supabase
             .from("organizations")
-            .select("id, name, slug, notification_telegram_id")
+            .select("id, name, slug, notification_telegram_id, agency_id")
             .or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone},whatsapp_number.eq.${phoneWithPlus},notification_phone.eq.${phoneWithPlus}`)
             .eq("is_active", true);
 
@@ -88,11 +88,24 @@ export async function POST(req: NextRequest) {
             throw new Error(`Failed to save OTP: ${otpError.message}`);
         }
 
+        let botToken: string | undefined = undefined;
+        let brandName = "CafeteriaFlow";
+        let brandIcon = "🌱";
+
+        if (org.agency_id) {
+            const { data: agency } = await supabase.from("agencies").select("brand_name, brand_icon, telegram_bot_token").eq("id", org.agency_id).single();
+            if (agency) {
+                brandName = agency.brand_name;
+                brandIcon = agency.brand_icon || "🌱";
+                botToken = agency.telegram_bot_token;
+            }
+        }
+
         // 5. Send OTP via Telegram
-        const otpMessage = `🌱 *CafeteriaFlow Login Code*: ${otpCode}\n\nUse this code to access your vendor dashboard. It expires in ${OTP_CONFIG.expiresInMinutes} minutes.`;
+        const otpMessage = `${brandIcon} *${brandName} Login Code*: ${otpCode}\n\nUse this code to access your vendor dashboard. It expires in ${OTP_CONFIG.expiresInMinutes} minutes.`;
 
         const { sendMessage } = await import("@/lib/telegram-sender");
-        await sendMessage(org.notification_telegram_id, otpMessage);
+        await sendMessage(org.notification_telegram_id, otpMessage, { botToken });
 
         return NextResponse.json({ success: true, message: "OTP sent to your Telegram" });
     } catch (e: any) {

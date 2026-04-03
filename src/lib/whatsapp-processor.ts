@@ -453,6 +453,19 @@ async function handlePickupTime(
 
     const subtotal = session.cart.reduce((sum, item) => sum + item.total_price, 0);
     const taxAmount = Math.round(subtotal * 0.08 * 100) / 100; // 8% tax
+
+    // Monetization: Calculate Platform Fee (Agency Commission)
+    let platformFeePercent = org.platform_fee_percent || 5.0;
+    if (org.agency_id) {
+        const { data: agency } = await supabase
+            .from("agencies")
+            .select("platform_fee_percent")
+            .eq("id", org.agency_id)
+            .single();
+        if (agency) platformFeePercent = agency.platform_fee_percent;
+    }
+    const platformFee = Math.round((subtotal * (platformFeePercent / 100)) * 100) / 100;
+
     const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
 
     // Create order
@@ -475,6 +488,7 @@ async function handlePickupTime(
             items_json: orderItems,
             subtotal,
             tax_amount: taxAmount,
+            platform_fee: platformFee,
             total_amount: totalAmount,
             status: "pending",
             payment_status: "pending",
@@ -500,6 +514,7 @@ async function handlePickupTime(
             })),
             totalAmount,
             customerPhone: phone,
+            agencyId: org.agency_id,
         });
 
         const pickupTimeStr = new Date(pickupTime).toLocaleTimeString("en-US", {

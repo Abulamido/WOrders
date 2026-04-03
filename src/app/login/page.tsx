@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Store, Phone, ChevronRight, Loader2, KeyRound, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBrand } from "@/lib/brand-context";
 
 export default function LoginPage() {
     const router = useRouter();
+    const brand = useBrand();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [phone, setPhone] = useState("");
@@ -78,9 +80,9 @@ export default function LoginPage() {
     return (
         <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col pt-12 pb-20 px-6">
             <header className="flex items-center justify-center gap-3 mb-16">
-                <span className="text-3xl">🌱</span>
-                <span className="font-bold text-2xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                    CafeteriaFlow
+                <span className="text-3xl">{brand.icon}</span>
+                <span className="font-bold text-2xl bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+                    {brand.name}
                 </span>
             </header>
 

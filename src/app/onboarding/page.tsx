@@ -15,6 +15,7 @@ import {
     ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBrand } from "@/lib/brand-context";
 
 export default function OnboardingFlow() {
     const router = useRouter();
@@ -23,6 +24,7 @@ export default function OnboardingFlow() {
     const [orgId, setOrgId] = useState("");
     const [orgSlug, setOrgSlug] = useState("");
     const [copied, setCopied] = useState(false);
+    const brand = useBrand();
 
     // Form State
     const [formData, setFormData] = useState({
@@ -36,7 +38,7 @@ export default function OnboardingFlow() {
     const handlePrev = () => setStep((s) => Math.max(1, s - 1));
 
     // Generate the Telegram link for this org
-    const telegramUsername = "Cafteriaflow";
+    const telegramUsername = brand.telegramBotUsername || "Cafteriaflow";
     const telegramLink = orgSlug
         ? `https://t.me/${telegramUsername}?start=${orgSlug}`
         : "";
@@ -67,6 +69,7 @@ export default function OnboardingFlow() {
                     whatsapp_number: formData.contact_phone,
                     notification_phone: formData.contact_phone,
                     business_hours: hours,
+                    agency_id: brand.agencyId,
                 })
             });
 
@@ -97,9 +100,9 @@ export default function OnboardingFlow() {
         <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col pt-12 pb-20 px-6">
             {/* Header */}
             <header className="flex items-center justify-center gap-3 mb-16">
-                <span className="text-3xl">🌱</span>
-                <span className="font-bold text-2xl bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                    CafeteriaFlow
+                <span className="text-3xl">{brand.icon}</span>
+                <span className="font-bold text-2xl bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+                    {brand.name}
                 </span>
             </header>
 

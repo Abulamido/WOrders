@@ -16,29 +16,39 @@ export async function getAdminDashboardStats() {
             .from("customers")
             .select("*", { count: "exact", head: true });
 
-        // Fetch orders
-        const { data: orders } = await supabase
+        // Fetch all paid orders
+        const { data: orderData } = await supabase
             .from("orders")
-            .select("total_amount")
+            .select("total_amount, platform_fee, org_id")
             .eq("payment_status", "paid");
 
-        const totalRevenue = orders?.reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
+        const totalRevenue = orderData?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) || 0;
         
-        // Calculate Total Platform Fees (Our cut)
-        const { data: feeOrders } = await supabase
-            .from("orders")
-            .select("platform_fee")
-            .eq("payment_status", "paid");
-        const totalPlatformFees = feeOrders?.reduce((sum, order) => sum + (Number(order.platform_fee) || 0), 0) || 0;
+        // Get IDs of orgs that belong to an agency (so we can exclude their fees)
+        const { data: agencyOrgs } = await supabase
+            .from("organizations")
+            .select("id")
+            .not("agency_id", "is", null);
+        const agencyOrgIds = new Set((agencyOrgs || []).map(o => o.id));
+
+        // Calculate Total Platform Fees (Our cut - only from direct vendors)
+        const platformRevenue = orderData?.filter(o => !agencyOrgIds.has(o.org_id))
+            .reduce((sum, order) => sum + (Number(order.platform_fee) || 0), 0) || 0;
+
+        // Fetch agency count
+        const { count: agencyCount } = await supabase
+            .from("agencies")
+            .select("*", { count: "exact", head: true });
 
         return {
             totalVendors: orgs?.length || 0,
             activeVendors: orgs?.filter(o => o.is_active && o.approval_status === "approved").length || 0,
             pendingApprovals: orgs?.filter(o => o.approval_status === "pending").length || 0,
+            totalAgencies: agencyCount || 0,
             totalCustomers: customerCount || 0,
-            totalOrders: orders?.length || 0,
+            totalOrders: orderData?.length || 0,
             totalRevenue,
-            totalPlatformFees,
+            totalPlatformFees: platformRevenue,
             recentVendors: orgs?.slice(0, 5) || []
         };
     } catch (err) {
@@ -109,4 +119,32 @@ export async function getAdminCustomers() {
         .select("*, organizations(name, slug)")
         .order("last_order_at", { ascending: false });
     return data || [];
+}
+
+import { revalidatePath } from "next/cache";
+
+export async function createAgency(formData: FormData) {
+    const supabase = createServiceClient();
+    const name = formData.get("name") as string;
+    const slug = formData.get("slug") as string;
+    const ownerName = formData.get("ownerName") as string;
+    const ownerPhone = formData.get("ownerPhone") as string;
+
+    if (!name || !slug) throw new Error("Name and Slug are required");
+
+    const { error } = await supabase.from("agencies").insert({
+        name,
+        slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+        brand_name: name,
+        owner_name: ownerName,
+        owner_phone: ownerPhone,
+        owner_password: "changeme123" // Default password
+    });
+
+    if (error) {
+        console.error("Failed to create agency:", error);
+        throw new Error(error.message);
+    }
+    
+    revalidatePath("/admin/agencies");
 }

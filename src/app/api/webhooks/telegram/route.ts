@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processTelegramUpdate } from "@/lib/telegram-processor";
+import { botContext } from "@/lib/telegram-sender";
+import { createServiceClient } from "@/lib/supabase";
 
 /**
  * POST — Receive incoming Telegram updates.
@@ -22,10 +24,22 @@ export async function POST(req: NextRequest) {
         const body = await req.clone().json();
         console.log("DEBUG: Telegram Payload Received");
 
-        // 2. Process the update asynchronously
-        // We don't await this if we want to respond quickly to Telegram (200 OK)
-        // But for debugging 500s, we'll await it for now.
-        await processTelegramUpdate(body);
+        // 2. Fetch specific bot token if bot_id is provided
+        const botId = req.nextUrl.searchParams.get("bot_id");
+        let agencyBotToken: string | undefined = undefined;
+
+        if (botId) {
+            const supabase = createServiceClient();
+            const { data: agency } = await supabase.from("agencies").select("telegram_bot_token").eq("slug", botId).single();
+            if (agency?.telegram_bot_token) {
+                agencyBotToken = agency.telegram_bot_token;
+            }
+        }
+
+        // 3. Process the update asynchronously wrapped in the bot context
+        await botContext.run({ botToken: agencyBotToken }, async () => {
+            await processTelegramUpdate(body);
+        });
 
         return NextResponse.json({ status: "ok" });
     } catch (error: any) {

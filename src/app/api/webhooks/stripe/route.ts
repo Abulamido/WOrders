@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
-import { stripe } from "@/lib/stripe";
+import { stripe as defaultStripe } from "@/lib/stripe";
 import { sendMessage } from "@/lib/telegram-sender";
 import Stripe from "stripe";
 
@@ -16,13 +16,36 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Missing signature" }, { status: 400 });
     }
 
+    const { searchParams } = new URL(req.url);
+    const agencyId = searchParams.get("agency_id");
+    const supabase = createServiceClient();
+
+    let webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+    let stripeClient = defaultStripe;
+
+    // Multi-tenant: resolving an agency's custom Stripe configuration
+    if (agencyId) {
+        const { data: agency } = await supabase
+            .from("agencies")
+            .select("stripe_webhook_secret, stripe_secret_key")
+            .eq("id", agencyId)
+            .single();
+            
+        if (agency?.stripe_webhook_secret && agency?.stripe_secret_key) {
+            webhookSecret = agency.stripe_webhook_secret;
+            stripeClient = new Stripe(agency.stripe_secret_key);
+        } else {
+            return NextResponse.json({ error: "Agency Stripe configuration incomplete" }, { status: 400 });
+        }
+    }
+
     let event: Stripe.Event;
 
     try {
-        event = stripe.webhooks.constructEvent(
+        event = stripeClient.webhooks.constructEvent(
             body,
             sig,
-            process.env.STRIPE_WEBHOOK_SECRET!
+            webhookSecret
         );
     } catch (err) {
         console.error("Stripe webhook signature verification failed:", err);
@@ -31,8 +54,6 @@ export async function POST(req: NextRequest) {
             { status: 400 }
         );
     }
-
-    const supabase = createServiceClient();
 
     try {
         switch (event.type) {

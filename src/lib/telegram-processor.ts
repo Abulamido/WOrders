@@ -490,8 +490,19 @@ async function finalizeOrder(chatId: number, org: Organization, session: Session
     const deliveryFee = session.orderType === "delivery" ? 5.00 : 0.00;
     
     // Monetization: Calculate Platform Fee (Revenue Share)
-    // The vendor pays this 5%, so it is NOT added to the customer's totalAmount.
-    const platformFeePercent = org.platform_fee_percent || 5.0;
+    // The vendor pays this percentage. If they belong to an agency, the agency sets the rate.
+    // Only vendors NOT under an agency pay the default 5% commission to the platform.
+    let platformFeePercent = org.platform_fee_percent || 5.0;
+
+    if (org.agency_id) {
+        const { data: agency } = await supabase
+            .from("agencies")
+            .select("platform_fee_percent")
+            .eq("id", org.agency_id)
+            .single();
+        if (agency) platformFeePercent = agency.platform_fee_percent;
+    }
+
     const platformFee = Math.round((subtotal * (platformFeePercent / 100)) * 100) / 100;
     
     // Customer pays Subtotal + Tax + Delivery. Platform Fee is deducted from vendor gross later.
@@ -540,6 +551,7 @@ async function finalizeOrder(chatId: number, org: Organization, session: Session
                 })).concat(session.orderType === "delivery" ? [{ name: "Delivery Fee", quantity: 1, price: deliveryFee }] : []),
                 totalAmount,
                 customerPhone: session.customerPhone || "",
+                agencyId: org.agency_id,
             });
 
             const checkoutMsg = `📋 *Order Draft Created!*\n\n${summaryText}\n\n🚚 Delivery Fee: ${formatCurrency(deliveryFee)}\n💰 *Total: ${formatCurrency(totalAmount)}*\n\n💳 *Pay here:* ${paymentUrl}`;
