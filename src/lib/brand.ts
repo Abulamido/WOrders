@@ -14,14 +14,14 @@ export interface BrandConfig {
 }
 
 export const DEFAULT_BRAND: BrandConfig = {
-    name: "CafeteriaFlow",
-    icon: "🌱",
-    logoUrl: null,
-    primaryColor: "#10b981",    // emerald-500
-    secondaryColor: "#14b8a6",  // teal-500
-    telegramBotUsername: "Cafteriaflow",
+    name: "MenuFlow",
+    icon: "🌊",
+    logoUrl: "/logo.png",
+    primaryColor: "#0d9488",    // Teal-600
+    secondaryColor: "#a3e635",  // Lemon Green (Lime-400)
+    telegramBotUsername: "MenuFlowBot",
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || null,
-    supportEmail: "support@cafeteriaflow.com",
+    supportEmail: "support@menuflow.app",
     agencyId: null,
 };
 

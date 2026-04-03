@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-primary: var(--brand-primary, #10b981);
-  --color-brand-secondary: var(--brand-secondary, #14b8a6);
+  --color-brand-primary: var(--brand-primary, #0d9488);
+  --color-brand-secondary: var(--brand-secondary, #a3e635);
 }
 
 :root {

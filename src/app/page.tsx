@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { cn } from "@/lib/utils";
 import { DEFAULT_BRAND } from "@/lib/brand";
+import { CheckCircle2, ArrowRight, Store, Smartphone, Zap } from "lucide-react";
 
 export default async function LandingPage() {
   const headersList = await headers();
@@ -17,288 +18,210 @@ export default async function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-hidden">
-      {/* Animated gradient background */}
-      <div className="fixed inset-0 -z-10">
-        <div className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] rounded-full bg-emerald-500/10 blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[5%] w-[400px] h-[400px] rounded-full bg-teal-500/8 blur-[100px] animate-pulse delay-1000" />
-        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full bg-blue-500/5 blur-[80px] animate-pulse delay-500" />
-      </div>
-
-      {/* Nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 lg:px-12 py-5">
+    <div className="min-h-screen bg-slate-50 text-gray-900 overflow-hidden font-sans selection:bg-brand-primary/20">
+      
+      {/* Navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 lg:px-12 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{brand.icon}</span>
-          <span className="font-bold text-xl bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+          {brand.logoUrl ? (
+            <img src={brand.logoUrl} alt={brand.name} className="h-8 w-auto" />
+          ) : (
+            <span className="text-2xl">{brand.icon}</span>
+          )}
+          <span className="font-bold text-xl tracking-tight text-gray-900">
             {brand.name}
           </span>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <Link
             href="/login"
-            className="text-sm text-gray-400 hover:text-white transition-colors"
+            className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
           >
-            Restaurant Login
+            Vendor Login
           </Link>
           <Link
             href="/onboarding"
-            className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-emerald-500/20"
+            className="px-5 py-2.5 text-white text-sm font-bold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            style={{ backgroundColor: brand.primaryColor }}
           >
-            Get Started Free
+            Start Free Trial
           </Link>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="relative z-10 max-w-5xl mx-auto px-6 pt-16 lg:pt-28 pb-20 text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm mb-8">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          Now live on Telegram — order in under 60 seconds
+      {/* SECTION 1: The Header (Character & Hook) */}
+      <header className="relative z-10 max-w-5xl mx-auto px-6 pt-32 pb-16 lg:pt-48 lg:pb-20 text-center">
+        {/* Subtle background glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-brand-primary/5 blur-[100px] rounded-full -z-10" />
+
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-gray-700 text-xs sm:text-sm font-medium mb-8">
+          <span className="w-2 h-2 rounded-full bg-brand-secondary animate-pulse" style={{ backgroundColor: brand.secondaryColor }} />
+          Running natively on WhatsApp & Telegram
         </div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight tracking-tight">
-          Cut lunch rush chaos by 70%
-          <br />
-          <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-blue-400 bg-clip-text text-transparent text-3xl sm:text-4xl lg:text-5xl">
-            Customers order via Telegram — no app downloads
-          </span>
+        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 leading-[1.1] tracking-tight mb-6 sm:mb-8">
+          Stop losing customers to <br className="hidden md:block" />
+          <span style={{ color: brand.primaryColor }}>long lines and slow service.</span>
         </h1>
 
-        <p className="max-w-2xl mx-auto mt-6 text-lg text-gray-400 leading-relaxed">
-          The fastest way to take orders. Customers open your Telegram bot, browse your menu, and pay — all in under a minute.
-          No new apps. Zero friction. Orders flow directly to your kitchen dashboard.
+        <p className="max-w-2xl mx-auto text-base sm:text-lg lg:text-xl text-gray-600 leading-relaxed mb-10">
+          Turn their favorite chat apps into your fastest cash register. Let your customers order and pay in under 60 seconds directly via WhatsApp and Telegram. Zero app downloads required.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-10">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link
             href="/onboarding"
-            className="px-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl text-lg transition-all duration-200 shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5"
+            className="flex items-center gap-2 px-8 py-4 text-white font-bold rounded-2xl text-lg transition-all duration-200 hover:-translate-y-1"
+            style={{ backgroundColor: brand.primaryColor, boxShadow: `0 10px 25px -5px ${brand.primaryColor}40` }}
           >
-            Start your free restaurant →
+            Create Your Free Restaurant <ArrowRight size={20} />
           </Link>
-          <Link
-            href="/onboarding"
-            className="px-8 py-4 border border-teal-400/20 hover:border-teal-400/40 rounded-2xl text-lg font-medium text-teal-300 hover:text-teal-200 transition-all duration-200 hover:-translate-y-0.5"
-          >
-            📱 Get Your Telegram Link
-          </Link>
+          <p className="text-sm text-gray-500 mt-3 sm:mt-0 sm:ml-4 text-left">
+            14-day free trial. <br className="hidden sm:block" />No credit card required.
+          </p>
         </div>
+      </header>
 
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4 text-sm font-medium text-gray-400">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/15">
-            <span>🔹</span>
-            <span>Powered by Telegram</span>
+      {/* SECTION 2: The Problem (Villain) */}
+      <section className="bg-white py-16 lg:py-24 px-6 relative border-y border-gray-100">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center mb-12 lg:mb-16 text-gray-900 tracking-tight">
+            The lunch rush shouldn't feel like a penalty.
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-red-500 mb-4 text-3xl">⏳</div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Walk-Aways</h3>
+              <p className="text-gray-600 leading-relaxed">Customers see a massive queue during peak hours and walk straight to your competitor next door.</p>
+            </div>
+            
+            <div className="p-8 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-red-500 mb-4 text-3xl">📱</div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">30% Commissions</h3>
+              <p className="text-gray-600 leading-relaxed">Third-party delivery apps eat your margins and withhold your customer data, preventing you from growing.</p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="text-red-500 mb-4 text-3xl">🗣️</div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Order Errors</h3>
+              <p className="text-gray-600 leading-relaxed">Taking orders over a noisy phone line leads to mistakes, refunded food, and frustrated customers.</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10">
-            <span>🔒</span>
-            <span>PCI Compliant via Stripe</span>
+        </div>
+      </section>
+
+      {/* SECTION 3: The Guide */}
+      <section className="py-16 lg:py-24 px-6 max-w-5xl mx-auto text-center relative z-10">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-6 tracking-tight">
+            We believe ordering food should be frictionless.
+        </h2>
+        <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-12">
+          We know how exhausting it is when the kitchen is backed up and the phone won't stop ringing. 
+          That's why <strong className="text-gray-900 font-bold">{brand.name}</strong> was built to power fast, automated ordering entirely through the apps your customers already use every single day.
+        </p>
+
+        {/* Feature Highlights */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto text-left">
+           <div className="flex items-center gap-4 bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.primaryColor }} />
+              <p className="font-semibold text-gray-800">100% margin on your orders</p>
+           </div>
+           <div className="flex items-center gap-4 bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.primaryColor }} />
+              <p className="font-semibold text-gray-800">Instantly update Sold Out items</p>
+           </div>
+           <div className="flex items-center gap-4 bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.primaryColor }} />
+              <p className="font-semibold text-gray-800">Integrated Stripe payments</p>
+           </div>
+           <div className="flex items-center gap-4 bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
+              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.primaryColor }} />
+              <p className="font-semibold text-gray-800">Live Kitchen Display System (KDS)</p>
+           </div>
+        </div>
+      </section>
+
+      {/* SECTION 4: The Plan */}
+      <section className="bg-slate-100 py-16 lg:py-24 px-6 border-y border-gray-200">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center text-gray-900 mb-12 lg:mb-16 tracking-tight">
+            Three steps to cut the queue
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+            {/* Connecting line for desktop */}
+            <div className="hidden md:block absolute top-[40px] left-[15%] right-[15%] h-[2px] bg-gray-300 z-0" />
+            
+            <div className="relative z-10 text-center">
+              <div className="w-20 h-20 mx-auto bg-white border border-gray-200 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                <Store size={32} style={{ color: brand.primaryColor }} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">1. Build your menu</h3>
+              <p className="text-gray-600">Add your items, variants, and prices using our visual dashboard. Zero coding required.</p>
+            </div>
+
+            <div className="relative z-10 text-center">
+              <div className="w-20 h-20 mx-auto bg-white border border-gray-200 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                <Smartphone size={32} style={{ color: brand.primaryColor }} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">2. Share your link</h3>
+              <p className="text-gray-600">Put your Telegram or WhatsApp QR code on tables, counters, and social media.</p>
+            </div>
+
+            <div className="relative z-10 text-center">
+              <div className="w-20 h-20 mx-auto bg-white border border-gray-200 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                <Zap size={32} style={{ color: brand.primaryColor }} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">3. Watch orders flow</h3>
+              <p className="text-gray-600">Pre-paid orders hit your Kitchen Display instantly. Fulfill them and click "Ready".</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="relative z-10 max-w-5xl mx-auto px-6 py-20">
-        <h2 className="text-3xl font-bold text-center mb-4">
-          How it works
-        </h2>
-        <p className="text-center text-gray-400 mb-16 max-w-lg mx-auto">
-          Three steps to transform your cafeteria ordering
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            {
-              step: "01",
-              icon: "📱",
-              title: "Customer scans your QR",
-              description:
-                'Customer scans a QR code or taps your Telegram link. One tap to start the bot and they instantly see your full menu.',
-            },
-            {
-              step: "02",
-              icon: "🛒",
-              title: "They order & pay",
-              description:
-                "Customers tap to select items, customize sizes, choose pickup time, and pay via Stripe — all inside Telegram.",
-            },
-            {
-              step: "03",
-              icon: "🔔",
-              title: "You manage & fulfill",
-              description:
-                "See orders in your dashboard OR right in your own Telegram. Update status and customers get notified automatically.",
-            },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="bg-[#141420]/80 border border-white/5 rounded-2xl p-8 hover:border-emerald-500/20 transition-all duration-300 hover:-translate-y-1 group"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-xs font-bold text-emerald-500/40 font-mono">
-                  {item.step}
-                </span>
-                <span className="text-3xl">{item.icon}</span>
-              </div>
-              <h3 className="text-lg font-bold mb-2 group-hover:text-emerald-400 transition-colors">
-                {item.title}
-              </h3>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                {item.description}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="relative z-10 max-w-5xl mx-auto px-6 py-20">
-        <h2 className="text-3xl font-bold text-center mb-16">
-          Everything you need to{" "}
-          <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-            run your restaurant
-          </span>
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[
-            { icon: "📱", title: "Telegram Ordering", desc: "Customers browse, customize, and order entirely inside Telegram" },
-            { icon: "📋", title: "Visual Menu Builder", desc: "Build your menu with items, variants, and modifiers from the dashboard" },
-            { icon: "💳", title: "Instant Payments", desc: "Stripe-powered secure checkout — pay directly from Telegram" },
-            { icon: "📊", title: "Live Analytics", desc: "Revenue, peak hours, top items — all real-time on your dashboard" },
-            { icon: "🔔", title: "Auto Notifications", desc: "Customers get order updates automatically via Telegram" },
-            { icon: "🏪", title: "Multi-Restaurant", desc: "Each restaurant gets its own dashboard, menu, and Telegram link" },
-            { icon: "⏰", title: "Pre-Order Scheduling", desc: "Let customers plan ahead with pickup time slots" },
-            { icon: "🔄", title: "Quick Reorder", desc: "One tap to repeat their favorite order via Telegram" },
-            { icon: "👨‍🍳", title: "Kitchen Dashboard", desc: "Kanban-style order board for your kitchen team to manage orders" },
-          ].map((feat) => (
-            <div
-              key={feat.title}
-              className="flex items-start gap-4 p-5 rounded-xl hover:bg-white/[0.02] transition-colors"
-            >
-              <span className="text-2xl flex-shrink-0 mt-0.5">{feat.icon}</span>
-              <div>
-                <h3 className="font-semibold mb-1">{feat.title}</h3>
-                <p className="text-sm text-gray-400">{feat.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="relative z-10 max-w-5xl mx-auto px-6 py-20">
-        <h2 className="text-3xl font-bold text-center mb-4">
-          Simple pricing
-        </h2>
-        <p className="text-center text-gray-400 mb-16">
-          Start free. Scale as you grow.
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              name: "Starter",
-              price: "Free",
-              period: "during beta",
-              desc: "Perfect for getting started",
-              features: ["Telegram ordering", "Up to 100 orders/month", "Menu builder", "Basic analytics", "Email support"],
-              popular: false,
-            },
-            {
-              name: "Growth",
-              price: "$49",
-              period: "/mo",
-              desc: "For busy restaurants",
-              features: ["Unlimited orders", "Telegram ordering channel", "Advanced analytics & exports", "Priority support", "Custom prep times"],
-              popular: true,
-            },
-            {
-              name: "Enterprise",
-              price: "$149",
-              period: "/mo",
-              desc: "Multi-location power",
-              features: ["Multi-location management", "API access", "Custom branding on Telegram", "Dedicated support", "SLA guarantee"],
-              popular: false,
-            },
-          ].map((plan) => (
-            <div
-              key={plan.name}
-              className={cn(
-                "relative rounded-2xl p-8 border transition-all duration-300",
-                plan.popular
-                  ? "bg-gradient-to-b from-emerald-500/10 to-transparent border-emerald-500/30 shadow-2xl shadow-emerald-500/10"
-                  : "bg-[#141420]/80 border-white/5 hover:border-white/10"
-              )}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full">
-                  Most Popular
-                </div>
-              )}
-              <h3 className="text-lg font-bold">{plan.name}</h3>
-              <p className="text-sm text-gray-400 mt-1">{plan.desc}</p>
-              <div className="mt-4 mb-6">
-                <span className="text-4xl font-bold">{plan.price}</span>
-                <span className="text-gray-500 text-sm">{plan.period}</span>
-              </div>
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((f) => (
-                  <li
-                    key={f}
-                    className="flex items-center gap-2 text-sm text-gray-300"
-                  >
-                    <span className="text-emerald-400">✓</span>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/onboarding"
-                className={cn(
-                  "block w-full py-3 rounded-xl font-semibold text-sm text-center transition-all duration-200",
-                  plan.popular
-                    ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
-                    : "bg-white/5 hover:bg-white/10 text-white border border-white/10"
-                )}
-              >
-                {plan.price === "Free" ? "Start Free" : "Start Free Trial"}
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="relative z-10 max-w-3xl mx-auto px-6 py-20 text-center">
-        <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-          Ready to{" "}
-          <span className="bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-            eliminate the queue?
-          </span>
-        </h2>
-        <p className="text-gray-400 mb-8 max-w-lg mx-auto">
-          Join restaurants already transforming their ordering with Telegram. Set up in 5 minutes.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      {/* SECTION 5: The Stakes / CTA */}
+      <section className="py-16 lg:py-24 px-6 bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto bg-gray-900 rounded-[2rem] p-8 sm:p-12 lg:p-16 text-center shadow-2xl relative overflow-hidden">
+          {/* Accent glow on dark card */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-secondary/20 blur-[80px] rounded-full" style={{ backgroundColor: `${brand.secondaryColor}40` }} />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-primary/20 blur-[80px] rounded-full" style={{ backgroundColor: `${brand.primaryColor}40` }} />
+          
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-6 tracking-tight relative z-10">
+            Ready to reclaim your peak hours?
+          </h2>
+          <p className="text-lg sm:text-xl text-gray-300 mb-10 max-w-2xl mx-auto relative z-10 font-medium leading-relaxed">
+            Stop losing revenue to walk-aways. Start processing 3x more orders per hour with a system your customers already know how to use.
+          </p>
+          
           <Link
             href="/onboarding"
-            className="inline-block px-10 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl text-lg transition-all duration-200 shadow-xl shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:-translate-y-0.5"
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 sm:px-10 sm:py-5 text-gray-900 font-bold rounded-2xl text-lg sm:text-xl transition-all duration-200 hover:scale-105 relative z-10 shadow-xl"
+            style={{ backgroundColor: brand.secondaryColor }}
           >
-            Create your restaurant →
+            Start your free 14-day trial
           </Link>
+          <p className="text-sm text-gray-400 mt-6 relative z-10">Set up in 5 minutes. Cancel anytime.</p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-white/5 py-8 px-6 text-center">
-        <div className="flex items-center justify-center gap-2 mb-2">
-          <span className="text-lg">{brand.icon}</span>
-          <span className="font-bold bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+      <footer className="bg-slate-50 py-12 px-6 flex flex-col items-center text-center">
+        <div className="flex items-center gap-2 mb-4">
+          {brand.logoUrl ? (
+            <img src={brand.logoUrl} alt={brand.name} className="h-6 w-auto" />
+          ) : (
+            <span className="text-xl">{brand.icon}</span>
+          )}
+          <span className="font-bold text-lg text-gray-900">
             {brand.name}
           </span>
         </div>
-        <p className="text-xs text-gray-600">
-          © {new Date().getFullYear()} {brand.name}. Telegram ordering for restaurants.
+        <p className="text-sm text-gray-500 max-w-md">
+          Providing modern restaurants with blazing fast ordering infrastructure via the apps everyone already uses.
+        </p>
+        <p className="text-xs text-gray-400 mt-8 font-medium">
+          © {new Date().getFullYear()} {brand.name}. All rights reserved.
         </p>
       </footer>
     </div>

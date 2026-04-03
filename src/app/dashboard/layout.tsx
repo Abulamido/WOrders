@@ -81,8 +81,12 @@ export default function DashboardLayout({
             {/* Mobile header */}
             <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-16 bg-[#0f0f1a]/95 backdrop-blur-xl border-b border-white/5">
                 <div className="flex items-center gap-3">
-                    <span className="text-xl">{brand.icon}</span>
-                    <span className="font-bold text-lg bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+                    {brand.logoUrl ? (
+                        <img src={brand.logoUrl} alt={brand.name} className="h-6 w-auto" />
+                    ) : (
+                        <span className="text-xl">{brand.icon}</span>
+                    )}
+                    <span className="font-bold text-lg text-white">
                         {brand.name}
                     </span>
                 </div>
@@ -103,8 +107,12 @@ export default function DashboardLayout({
             >
                 {/* Logo */}
                 <div className="flex items-center gap-3 px-6 h-16 border-b border-white/5">
-                    <span className="text-2xl">{brand.icon}</span>
-                    <span className="font-bold text-xl bg-clip-text text-transparent" style={{ backgroundImage: `linear-gradient(to right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+                    {brand.logoUrl ? (
+                        <img src={brand.logoUrl} alt={brand.name} className="h-8 w-auto" />
+                    ) : (
+                        <span className="text-2xl">{brand.icon}</span>
+                    )}
+                    <span className="font-bold text-xl text-white">
                         {brand.name}
                     </span>
                 </div>

@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="tealFade" x1="0" y1="512" x2="256" y2="0" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#0d9488"/>
+            <stop offset="1" stop-color="#2dd4bf"/>
+        </linearGradient>
+        <linearGradient id="lemonFade" x1="256" y1="512" x2="512" y2="0" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#65a30d"/>
+            <stop offset="1" stop-color="#bef264"/>
+        </linearGradient>
+    </defs>
+    
+    <!-- Left Pillar & Arch (Teal) -->
+    <path d="M140 380 V196 C140 110 256 110 256 196 V380" stroke="url(#tealFade)" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <!-- Right Arch (Lemon Green) -->
+    <path d="M256 300 V196 C256 110 372 110 372 196 V380" stroke="url(#lemonFade)" stroke-width="72" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+</svg>

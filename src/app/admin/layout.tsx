@@ -3,6 +3,7 @@
 import { LogOut, Store, LayoutDashboard, Users, Activity, Lock, KeyRound, Loader2, Building2 } from "lucide-react";
 import Link from "next/link";
 import { ReactNode, useState, useEffect } from "react";
+import { DEFAULT_BRAND } from "@/lib/brand";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -81,9 +82,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <aside className="w-64 border-r border-white/5 bg-[#141420] flex-shrink-0 flex flex-col hidden md:flex">
                 <div className="p-6 border-b border-white/5">
                     <Link href="/" className="flex items-center gap-2">
-                        <span className="text-xl">🌱</span>
+                        {DEFAULT_BRAND.logoUrl ? (
+                            <img src={DEFAULT_BRAND.logoUrl} alt={DEFAULT_BRAND.name} className="h-6 w-auto" />
+                        ) : (
+                            <span className="text-xl">{DEFAULT_BRAND.icon}</span>
+                        )}
                         <span className="font-bold text-lg bg-gradient-to-r from-emerald-400 to-teal-300 bg-clip-text text-transparent">
-                            CafeteriaFlow
+                            {DEFAULT_BRAND.name}
                         </span>
                         <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full font-semibold ml-1">
                             ADMIN
