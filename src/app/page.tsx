@@ -41,8 +41,8 @@ export default async function LandingPage() {
           </Link>
           <Link
             href="/onboarding"
-            className="px-5 py-2.5 text-white text-sm font-bold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
-            style={{ backgroundColor: brand.primaryColor }}
+            className="px-5 py-2.5 text-gray-900 text-sm font-bold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            style={{ backgroundColor: brand.secondaryColor }}
           >
             Start Free Trial
           </Link>
@@ -71,8 +71,8 @@ export default async function LandingPage() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link
             href="/onboarding"
-            className="flex items-center gap-2 px-8 py-4 text-white font-bold rounded-2xl text-lg transition-all duration-200 hover:-translate-y-1"
-            style={{ backgroundColor: brand.primaryColor, boxShadow: `0 10px 25px -5px ${brand.primaryColor}40` }}
+            className="flex items-center gap-2 px-8 py-4 text-gray-900 font-bold rounded-2xl text-lg transition-all duration-200 hover:-translate-y-1"
+            style={{ backgroundColor: brand.secondaryColor, boxShadow: `0 10px 25px -5px ${brand.secondaryColor}40` }}
           >
             Create Your Free Restaurant <ArrowRight size={20} />
           </Link>
@@ -124,19 +124,19 @@ export default async function LandingPage() {
         {/* Feature Highlights */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto text-left">
            <div className="flex items-center gap-4 bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
-              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.primaryColor }} />
+              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.secondaryColor }} />
               <p className="font-semibold text-gray-800">100% margin on your orders</p>
            </div>
            <div className="flex items-center gap-4 bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
-              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.primaryColor }} />
+              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.secondaryColor }} />
               <p className="font-semibold text-gray-800">Instantly update Sold Out items</p>
            </div>
            <div className="flex items-center gap-4 bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
-              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.primaryColor }} />
+              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.secondaryColor }} />
               <p className="font-semibold text-gray-800">Integrated Stripe payments</p>
            </div>
            <div className="flex items-center gap-4 bg-white border border-gray-200 p-5 rounded-xl shadow-sm">
-              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.primaryColor }} />
+              <CheckCircle2 className="flex-shrink-0" size={24} style={{ color: brand.secondaryColor }} />
               <p className="font-semibold text-gray-800">Live Kitchen Display System (KDS)</p>
            </div>
         </div>

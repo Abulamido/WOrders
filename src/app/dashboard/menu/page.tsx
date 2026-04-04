@@ -275,12 +275,15 @@ export default function MenuBuilder() {
                 method: "POST",
                 body: formData,
             });
+            const data = await res.json();
             if (res.ok) {
-                const data = await res.json();
                 setItemImageUrl(data.url);
+            } else {
+                alert(`Upload failed: ${data.error || "Unknown error"}`);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Upload error:", err);
+            alert(`Network or Server Error: ${err.message}`);
         } finally {
             setFormLoading(false);
         }
