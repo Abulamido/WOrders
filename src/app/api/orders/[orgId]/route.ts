@@ -12,7 +12,8 @@ export async function GET(
     const supabase = createServiceClient();
     const searchParams = req.nextUrl.searchParams;
     const status = searchParams.get("status");
-    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const start = searchParams.get("start");
+    const limit = parseInt(searchParams.get("limit") || "200", 10);
 
     let query = supabase
         .from("orders")
@@ -23,6 +24,10 @@ export async function GET(
 
     if (status) {
         query = query.eq("status", status);
+    }
+
+    if (start) {
+        query = query.gte("created_at", start);
     }
 
     const { data, error } = await query;

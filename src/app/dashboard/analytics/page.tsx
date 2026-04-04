@@ -11,7 +11,8 @@ import {
     ArrowDownRight,
     Loader2,
     Share2,
-    Check
+    Check,
+    Users
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -51,7 +52,8 @@ export default function AnalyticsDashboard() {
         stats: any[];
         topItems: any[];
         hourlyData: any[];
-    }>({ stats: [], topItems: [], hourlyData: [] });
+        ordersByStatus: Record<string, number>;
+    }>({ stats: [], topItems: [], hourlyData: [], ordersByStatus: {} });
 
     const fetchAnalytics = useCallback(async (orgId: string) => {
         setLoading(true);
@@ -61,19 +63,50 @@ export default function AnalyticsDashboard() {
             if (period === "week") start.setDate(start.getDate() - 7);
             if (period === "month") start.setDate(start.getDate() - 30);
 
-            const res = await fetch(`/api/orders/${orgId}?start=${start.toISOString()}`);
+            const res = await fetch(`/api/orders/${orgId}?start=${start.toISOString()}&limit=500`);
             if (res.ok) {
                 const { orders } = await res.json();
-                const paidOrders = orders.filter((o: any) => o.payment_status === "paid");
-                const revenue = paidOrders.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0);
-                const count = paidOrders.length;
+                if (!orders || orders.length === 0) {
+                    setData({
+                        stats: [
+                            { label: "Revenue", value: formatCurrency(0), change: "", trend: "up", icon: DollarSign, color: "emerald" },
+                            { label: "Total Orders", value: "0", change: "", trend: "up", icon: ShoppingBag, color: "blue" },
+                            { label: "Completion Rate", value: "—", change: "", trend: "up", icon: TrendingUp, color: "violet" },
+                            { label: "Unique Customers", value: "0", change: "", trend: "up", icon: Users, color: "amber" },
+                        ],
+                        topItems: [],
+                        hourlyData: [],
+                        ordersByStatus: {},
+                    });
+                    setLoading(false);
+                    return;
+                }
 
+                // --- Revenue: count all non-cancelled orders ---
+                const activeOrders = orders.filter((o: any) => o.status !== "cancelled");
+                const revenue = activeOrders.reduce((sum: number, o: any) => sum + (o.total_amount || 0), 0);
+                const totalCount = orders.length;
+
+                // --- Completion rate ---
+                const completedCount = orders.filter((o: any) => o.status === "completed").length;
+                const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+                // --- Unique customers ---
+                const uniqueCustomers = new Set(orders.map((o: any) => o.customer_phone).filter(Boolean)).size;
+
+                // --- Orders by status ---
+                const ordersByStatus: Record<string, number> = {};
+                orders.forEach((o: any) => {
+                    ordersByStatus[o.status] = (ordersByStatus[o.status] || 0) + 1;
+                });
+
+                // --- Top items ---
                 const itemMap: Record<string, { count: number; revenue: number }> = {};
-                paidOrders.forEach((o: any) => {
-                    if (o.items_json) {
+                orders.forEach((o: any) => {
+                    if (o.items_json && o.status !== "cancelled") {
                         (o.items_json as any[]).forEach((item: any) => {
                             if (!itemMap[item.name]) itemMap[item.name] = { count: 0, revenue: 0 };
-                            itemMap[item.name].count += (item.quantity || 0);
+                            itemMap[item.name].count += (item.quantity || 1);
                             itemMap[item.name].revenue += (item.total_price || 0);
                         });
                     }
@@ -84,18 +117,41 @@ export default function AnalyticsDashboard() {
                     .slice(0, 5)
                     .map(([name, stats]) => ({ name, ...stats }));
 
+                // --- Hourly breakdown (real data) ---
+                const hourlyMap: Record<number, number> = {};
+                orders.forEach((o: any) => {
+                    const h = new Date(o.created_at).getHours();
+                    hourlyMap[h] = (hourlyMap[h] || 0) + 1;
+                });
+
+                const maxHourly = Math.max(...Object.values(hourlyMap), 1);
+                const hourlyData: any[] = [];
+
+                // Build 24-hour or relevant range
+                const hours = Object.keys(hourlyMap).map(Number).sort((a, b) => a - b);
+                const minHour = hours.length > 0 ? Math.max(hours[0] - 1, 0) : 8;
+                const maxHour = hours.length > 0 ? Math.min(hours[hours.length - 1] + 1, 23) : 22;
+
+                for (let h = minHour; h <= maxHour; h++) {
+                    const count = hourlyMap[h] || 0;
+                    const label = h === 0 ? "12AM" : h < 12 ? `${h}AM` : h === 12 ? "12PM" : `${h - 12}PM`;
+                    hourlyData.push({
+                        hour: label,
+                        orders: count,
+                        height: Math.max((count / maxHourly) * 100, 4),
+                    });
+                }
+
                 setData({
                     stats: [
                         { label: "Revenue", value: formatCurrency(revenue), change: "", trend: "up", icon: DollarSign, color: "emerald" },
-                        { label: "Orders", value: count.toString(), change: "", trend: "up", icon: ShoppingBag, color: "blue" },
-                        { label: "Completion Rate", value: "100%", change: "", trend: "up", icon: TrendingUp, color: "violet" },
-                        { label: "Avg. Prep Time", value: "12 min", change: "", trend: "down", icon: Clock, color: "amber" },
+                        { label: "Total Orders", value: totalCount.toString(), change: "", trend: "up", icon: ShoppingBag, color: "blue" },
+                        { label: "Completion Rate", value: `${completionRate}%`, change: "", trend: completionRate >= 80 ? "up" : "down", icon: TrendingUp, color: "violet" },
+                        { label: "Unique Customers", value: uniqueCustomers.toString(), change: "", trend: "up", icon: Users, color: "amber" },
                     ],
                     topItems,
-                    hourlyData: [
-                        { hour: "12PM", orders: Math.floor(count * 0.4), height: count > 0 ? 80 : 5 },
-                        { hour: "1PM", orders: Math.floor(count * 0.6), height: count > 0 ? 100 : 5 },
-                    ]
+                    hourlyData,
+                    ordersByStatus,
                 });
             }
         } catch (err) {
@@ -130,6 +186,14 @@ export default function AnalyticsDashboard() {
         } finally {
             setSending(false);
         }
+    };
+
+    const statusColors: Record<string, string> = {
+        pending: "bg-amber-500/20 text-amber-400",
+        preparing: "bg-blue-500/20 text-blue-400",
+        ready: "bg-emerald-500/20 text-emerald-400",
+        completed: "bg-gray-500/20 text-gray-400",
+        cancelled: "bg-red-500/20 text-red-400",
     };
 
     return (
@@ -225,31 +289,36 @@ export default function AnalyticsDashboard() {
                         })}
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         {/* Peak Hours Chart */}
                         <div className="bg-[#141420] border border-white/5 rounded-xl p-6">
                             <div className="flex items-center gap-2 mb-6">
                                 <BarChart3 size={18} className="text-emerald-400" />
-                                <h3 className="font-semibold">Trend Visualization</h3>
+                                <h3 className="font-semibold">Orders by Hour</h3>
                             </div>
-                            <div className="flex items-end gap-2 h-48">
-                                {data.hourlyData.map((d) => (
-                                    <div
-                                        key={d.hour}
-                                        className="flex-1 flex flex-col items-center gap-2"
-                                    >
-                                        <span className="text-xs text-gray-400 font-medium">
-                                            {d.orders}
-                                        </span>
+                            {data.hourlyData.length > 0 ? (
+                                <div className="flex items-end gap-1 h-48">
+                                    {data.hourlyData.map((d) => (
                                         <div
-                                            className="w-full rounded-t-lg bg-gradient-to-t from-emerald-500/40 to-emerald-400/20 transition-all duration-500"
-                                            style={{ height: `${d.height}%` }}
-                                        />
-                                        <span className="text-[10px] text-gray-500">{d.hour}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-4 text-center italic">Calculated based on current period volume</p>
+                                            key={d.hour}
+                                            className="flex-1 flex flex-col items-center gap-2 group"
+                                        >
+                                            <span className="text-xs text-gray-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {d.orders}
+                                            </span>
+                                            <div
+                                                className="w-full rounded-t-lg bg-gradient-to-t from-emerald-500/50 to-emerald-400/20 hover:from-emerald-500/70 hover:to-emerald-400/40 transition-all duration-300 cursor-default"
+                                                style={{ height: `${d.height}%` }}
+                                            />
+                                            <span className="text-[9px] text-gray-500 whitespace-nowrap">{d.hour}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
+                                    No order data for this period yet.
+                                </div>
+                            )}
                         </div>
 
                         {/* Top Items */}
@@ -294,6 +363,30 @@ export default function AnalyticsDashboard() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Order Status Breakdown */}
+                    {Object.keys(data.ordersByStatus).length > 0 && (
+                        <div className="bg-[#141420] border border-white/5 rounded-xl p-6">
+                            <div className="flex items-center gap-2 mb-6">
+                                <ShoppingBag size={18} className="text-blue-400" />
+                                <h3 className="font-semibold">Order Status Breakdown</h3>
+                            </div>
+                            <div className="flex flex-wrap gap-3">
+                                {Object.entries(data.ordersByStatus).map(([status, count]) => (
+                                    <div
+                                        key={status}
+                                        className={cn(
+                                            "px-4 py-2.5 rounded-xl text-sm font-medium border border-white/5",
+                                            statusColors[status] || "bg-gray-500/20 text-gray-400"
+                                        )}
+                                    >
+                                        <span className="capitalize">{status}</span>
+                                        <span className="ml-2 font-bold">{count}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>
