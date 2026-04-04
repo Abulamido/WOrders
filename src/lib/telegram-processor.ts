@@ -8,6 +8,7 @@ import {
     sendMessage,
     answerCallbackQuery,
     requestContact,
+    sendPhoto
 } from "./telegram-sender";
 import { createPaymentLink } from "./stripe";
 import { formatCurrency } from "./utils";
@@ -26,7 +27,7 @@ interface CartItem {
 
 interface Session {
     orgId: string;
-    state: "welcome" | "idle" | "browsing" | "category" | "item_selected" | "variant" | "cart" | "checkout_name" | "checkout_phone" | "checkout_type" | "checkout_address" | "checkout_payment" | "awaiting_payment";
+    state: "welcome" | "idle" | "browsing" | "category" | "item_selected" | "variant" | "cart" | "checkout_name" | "checkout_phone" | "checkout_type" | "checkout_address" | "checkout_payment" | "awaiting_payment" | "support_chat";
     selectedCategory?: string;
     selectedItem?: MenuItem;
     cart: CartItem[];
@@ -50,9 +51,9 @@ function getSession(chatId: string | number, orgId: string): Session {
 }
 
 function getActiveSession(chatId: string | number): Session | undefined {
-    // Find the session currently engaged in checkout for this user
+    // Find the session currently engaged in checkout or support chat for this user
     for (const [key, session] of sessions.entries()) {
-        if (key.startsWith(`${chatId}:`) && session.state.startsWith("checkout_")) {
+        if (key.startsWith(`${chatId}:`) && (session.state.startsWith("checkout_") || session.state === "support_chat")) {
             return session;
         }
     }
@@ -143,6 +144,16 @@ export async function processTelegramUpdate(update: any) {
             return;
         }
 
+        // --- EXIT SUPPORT CHAT (/done) ---
+        if (text && text.trim() === "/done") {
+            const activeSession = getActiveSession(chatId);
+            if (activeSession && activeSession.state === "support_chat") {
+                activeSession.state = "idle";
+                await sendMessage(chatId, "✅ *Support chat ended.* You can continue ordering or request help again from your order receipt.");
+            }
+            return;
+        }
+
         // --- CONTACT (Phone sharing) ---
         if (contact && contact.phone_number) {
             const activeSession = getActiveSession(chatId);
@@ -152,9 +163,30 @@ export async function processTelegramUpdate(update: any) {
             }
         }
 
+        // --- VENDOR REPLY ROUTING ---
+        if (update.message.reply_to_message && update.message.reply_to_message.text) {
+            const replyText = update.message.reply_to_message.text;
+            const match = replyText.match(/\[ChatID:\s*(\d+)\]/);
+            if (match && match[1]) {
+                const customerChatId = match[1];
+                await sendMessage(customerChatId, `💬 *Message from Kitchen:*\n${text}`);
+                return;
+            }
+        }
+
         // --- TEXT INPUT STATE MACHINE ---
         if (text && !text.startsWith("/")) {
             const activeSession = getActiveSession(chatId);
+            
+            if (activeSession && activeSession.state === "support_chat") {
+                const { data: org } = await supabase.from("organizations").select("notification_telegram_id").eq("id", activeSession.orgId).single();
+                if (org && org.notification_telegram_id) {
+                    await sendMessage(org.notification_telegram_id as unknown as string, `💬 *Message from Customer [ChatID: ${chatId}]*:\n${text}`);
+                    await sendMessage(chatId, "✅ _Message sent to kitchen_");
+                }
+                return;
+            }
+
             if (activeSession && activeSession.state.startsWith("checkout_")) {
                 await processCheckoutInput(chatId, text, activeSession);
                 return;
@@ -189,7 +221,7 @@ export async function processTelegramUpdate(update: any) {
                 const { data: itemData } = await supabase.from("menu_items").select("org_id").eq("id", payload).single();
                 if (!itemData) throw new Error("Item not found");
                 orgId = itemData.org_id;
-            } else if (["accept", "reject"].includes(action)) {
+            } else if (["accept", "reject", "status_ready", "status_completed", "support_request"].includes(action)) {
                 const { data: orderData } = await supabase.from("orders").select("org_id").eq("id", payload).single();
                 if (!orderData) throw new Error("Order not found");
                 orgId = orderData.org_id;
@@ -241,6 +273,16 @@ export async function processTelegramUpdate(update: any) {
                     break;
                 case "reject":
                     await handleOrderAction(chatId, org, payload, "rejected");
+                    break;
+                case "status_ready":
+                    await handleOrderAction(chatId, org, payload, "ready");
+                    break;
+                case "status_completed":
+                    await handleOrderAction(chatId, org, payload, "completed");
+                    break;
+                case "support_request":
+                    session.state = "support_chat";
+                    await sendMessage(chatId, "💬 *Live Support Activated*\n\nType your message and it will be sent directly to the kitchen staff. They can reply to you right here.\n\nTo exit support, type /done");
                     break;
                 case "history":
                     await sendMessage(chatId, "Order history functionality coming soon!");
@@ -303,7 +345,7 @@ async function sendCategories(chatId: number, org: Organization) {
     });
 }
 
-/** Handle Category Selection — Shows all items, marks sold-out ones */
+/** Handle Category Selection — Shows items with photos and descriptions */
 async function handleCategorySelect(chatId: number, org: Organization, catId: string, session: Session) {
     const supabase = createServiceClient();
     // Fetch ALL items (including unavailable) to show sold-out badges
@@ -314,27 +356,33 @@ async function handleCategorySelect(chatId: number, org: Organization, catId: st
         .order("sort_order");
 
     if (!items || items.length === 0) {
-        await sendMessage(chatId, "No items in this category.");
+        await sendMessage(chatId, "No items found in this category.");
         return;
     }
 
-    const buttons = items.map(item => {
-        if (!item.is_available) {
-            // Sold out items — show badge, use a no-op callback
-            return [{
-                text: `❌ ${item.name} — SOLD OUT`,
-                callback_data: `noop:${item.id}`
-            }];
-        }
-        return [{
-            text: `${item.name} - ${formatCurrency(item.price)}`,
-            callback_data: `item:${item.id}`
-        }];
-    });
+    await sendMessage(chatId, "👇 *Here are the options in this category:*");
 
-    await sendMessage(chatId, "🛒 Select an item to add to your cart:", {
-        reply_markup: { inline_keyboard: buttons }
-    });
+    // Send individual messages/photos for each item
+    for (const item of items) {
+        const desc = item.description ? `\n_${item.description}_\n` : "";
+        const caption = `*${item.name}*${desc}\n💰 ${formatCurrency(item.price)}`;
+        
+        let reply_markup: any = {
+            inline_keyboard: [
+                [
+                    item.is_available 
+                        ? { text: `🛒 Add to Cart`, callback_data: `item:${item.id}` }
+                        : { text: `❌ SOLD OUT`, callback_data: `noop:${item.id}` }
+                ]
+            ]
+        };
+
+        if (item.image_url) {
+            await sendPhoto(chatId, item.image_url, caption, { reply_markup });
+        } else {
+            await sendMessage(chatId, caption, { reply_markup });
+        }
+    }
 }
 
 /** Handle Item Selection — Add to Cart directly for MVP */
@@ -555,7 +603,8 @@ async function finalizeOrder(chatId: number, org: Organization, session: Session
             });
 
             const checkoutMsg = `📋 *Order Draft Created!*\n\n${summaryText}\n\n🚚 Delivery Fee: ${formatCurrency(deliveryFee)}\n💰 *Total: ${formatCurrency(totalAmount)}*\n\n💳 *Pay here:* ${paymentUrl}`;
-            await sendMessage(chatId, checkoutMsg);
+            const supportButton = [[{ text: "💬 Request Help", callback_data: `support_request:${order.id}` }]];
+            await sendMessage(chatId, checkoutMsg, { reply_markup: { inline_keyboard: supportButton } });
             session.state = "awaiting_payment";
         } catch (e: any) {
             console.error("Payment generation error:", e);
@@ -563,7 +612,8 @@ async function finalizeOrder(chatId: number, org: Organization, session: Session
         }
     } else {
         const checkoutMsg = `📋 *Order Confirmed!*\n\n${summaryText}\n\n💰 *Total: ${formatCurrency(totalAmount)}*\n💵 You chose to pay *in cash on pick up*.`;
-        await sendMessage(chatId, checkoutMsg);
+        const supportButton = [[{ text: "💬 Request Help", callback_data: `support_request:${order.id}` }]];
+        await sendMessage(chatId, checkoutMsg, { reply_markup: { inline_keyboard: supportButton } });
         session.state = "idle";
         session.cart = []; // clear cart
     }
@@ -581,13 +631,23 @@ async function finalizeOrder(chatId: number, org: Organization, session: Session
     }
 }
 
-/** Handle Vendor Actions (Accept/Reject) */
-async function handleOrderAction(chatId: number | string, org: Organization, orderId: string, status: "accepted" | "rejected") {
+/** Handle Vendor Actions (Accept/Reject and new Status Updates) */
+async function handleOrderAction(chatId: number | string, org: Organization, orderId: string, action: "accepted" | "rejected" | "ready" | "completed") {
     const supabase = createServiceClient();
+    
+    // Map action to DB status
+    const statusMap: Record<string, string> = {
+        "accepted": "preparing",
+        "rejected": "cancelled",
+        "ready": "ready",
+        "completed": "completed"
+    };
+
+    const newStatus = statusMap[action] || "pending";
     
     const { data: order, error } = await supabase
         .from("orders")
-        .update({ status })
+        .update({ status: newStatus })
         .eq("id", orderId)
         .select()
         .single();
@@ -598,16 +658,31 @@ async function handleOrderAction(chatId: number | string, org: Organization, ord
         return;
     }
 
-    const emoji = status === "accepted" ? "✅" : "❌";
-    const msg = `${emoji} Order *${status}* successfully.`;
-    await sendMessage(chatId, msg);
+    if (action === "accepted") {
+        const msg = `✅ Order *Accepted* and is now Preparing.\nWhat is the current status?`;
+        const actionButtons = [
+            [{ text: "📦 Mark Ready for Pickup/Delivery", callback_data: `status_ready:${order.id}` }],
+            [{ text: "✅ Mark Completed", callback_data: `status_completed:${order.id}` }]
+        ];
+        await sendMessage(chatId, msg, { reply_markup: { inline_keyboard: actionButtons } });
 
-    // Notify Customer
-    if (order.telegram_chat_id) {
-        const customerMsg = status === "accepted" 
-            ? `✅ *Your order from ${org.name} has been accepted!*\n\nOur kitchen is starting to prepare it now.`
-            : `❌ *Sorry, your order from ${org.name} could not be accepted at this time.*\n\nIf you have already paid, a refund will be processed automatically.`;
-        
-        await sendMessage(order.telegram_chat_id as unknown as string, customerMsg);
+        if (order.telegram_chat_id) {
+            await sendMessage(order.telegram_chat_id as unknown as string, `✅ *Your order from ${org.name} has been accepted!*\n\nOur kitchen is starting to prepare it now.`);
+        }
+    } else if (action === "rejected") {
+        await sendMessage(chatId, `❌ Order Rejected and Cancelled.`);
+        if (order.telegram_chat_id) {
+            await sendMessage(order.telegram_chat_id as unknown as string, `❌ *Sorry, your order from ${org.name} could not be accepted at this time.*\n\nIf you have already paid, a refund will be processed automatically.`);
+        }
+    } else if (action === "ready") {
+        await sendMessage(chatId, `📦 Order marked as *Ready*.`);
+        if (order.telegram_chat_id) {
+            await sendMessage(order.telegram_chat_id as unknown as string, `📦 *Your order from ${org.name} is ready!*`);
+        }
+    } else if (action === "completed") {
+        await sendMessage(chatId, `✅ Order marked as *Completed*.`);
+        if (order.telegram_chat_id) {
+            await sendMessage(order.telegram_chat_id as unknown as string, `✅ *Your order from ${org.name} has been completed/delivered!* Enjoy your meal!`);
+        }
     }
 }
