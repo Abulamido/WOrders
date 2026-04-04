@@ -139,7 +139,25 @@ export async function processTelegramUpdate(update: any) {
                 console.error("Vendor auth error:", orgError);
                 await sendMessage(chatId, "❌ Failed to link your vendor account. Please try again from the dashboard.");
             } else {
-                await sendMessage(chatId, "✅ *Vendor Authorized!*\n\nYou will now receive real-time order notifications for your cafeteria right here on Telegram.");
+                await sendMessage(chatId, "✅ *Vendor Authorized!*\n\nYou will now receive real-time order notifications and can use /open or /close to manage your shop status.");
+            }
+            return;
+        }
+
+        // --- VENDOR COMMANDS (/open, /close) ---
+        if (text && (text.trim() === "/open" || text.trim() === "/close")) {
+            const isOpening = text.trim() === "/open";
+            const { data: org, error } = await supabase
+                .from("organizations")
+                .update({ is_open_manually: isOpening })
+                .eq("notification_telegram_id", chatId)
+                .select("name")
+                .single();
+
+            if (error || !org) {
+                await sendMessage(chatId, "❌ You must be a linked vendor to use this command. Use `/vendor {orgId}` to link.");
+            } else {
+                await sendMessage(chatId, `✅ *Status Updated!* \n\n${org.name} is now *${isOpening ? "OPEN" : "CLOSED"}* for new orders.`);
             }
             return;
         }
@@ -285,8 +303,24 @@ export async function processTelegramUpdate(update: any) {
                     await sendMessage(chatId, "💬 *Live Support Activated*\n\nType your message and it will be sent directly to the kitchen staff. They can reply to you right here.\n\nTo exit support, type /done");
                     break;
                 case "history":
-                    await sendMessage(chatId, "Order history functionality coming soon!");
+                {
+                    const { data: pastOrders } = await supabase
+                        .from("orders")
+                        .select("id, status, total_amount, created_at")
+                        .eq("telegram_chat_id", chatId)
+                        .order("created_at", { ascending: false })
+                        .limit(5);
+
+                    if (!pastOrders || pastOrders.length === 0) {
+                        await sendMessage(chatId, "📭 You haven't placed any orders yet!");
+                    } else {
+                        const historyText = pastOrders.map(o => 
+                            `• #${o.id.slice(0, 8)} (${new Date(o.created_at).toLocaleDateString()})\n  Status: ${o.status.toUpperCase()}\n  Total: ${formatCurrency(o.total_amount)}`
+                        ).join("\n\n");
+                        await sendMessage(chatId, `📜 *Your Recent Orders*\n\n${historyText}`);
+                    }
                     break;
+                }
             }
             await answerCallbackQuery(id);
         } catch (err: any) {
@@ -387,6 +421,12 @@ async function handleCategorySelect(chatId: number, org: Organization, catId: st
 
 /** Handle Item Selection — Add to Cart directly for MVP */
 async function handleItemSelect(chatId: number, org: Organization, itemId: string, session: Session) {
+    // Guard: Store Status
+    if (!org.is_open_manually) {
+        await sendMessage(chatId, `❌ *Kitchen Closed*\n\n${org.name} is not accepting new orders at this time. Please check back later!`);
+        return;
+    }
+
     const supabase = createServiceClient();
     const { data: item } = await supabase
         .from("menu_items")
@@ -447,6 +487,12 @@ async function showCartSummary(chatId: number, org: Organization, session: Sessi
 /** MULTI-STEP CHECKOUT FLOW */
 
 async function handleCheckoutStart(chatId: number, org: Organization, session: Session) {
+    // Guard: Store Status
+    if (!org.is_open_manually) {
+        await sendMessage(chatId, `❌ *Checkout Disabled*\n\n${org.name} is currently closed. We cannot process your order right now.`);
+        return;
+    }
+
     if (session.cart.length === 0) {
         await sendMessage(chatId, "Your cart is empty.");
         return;

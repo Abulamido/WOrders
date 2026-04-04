@@ -57,6 +57,22 @@ export default function OrdersDashboard() {
     const [organization, setOrganization] = useState<any>(null);
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [soundEnabled, setSoundEnabled] = useState(false);
+    const prevOrderIds = useRef<Set<string>>(new Set());
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    // Initialize audio on first user interaction
+    useEffect(() => {
+        audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
+        audioRef.current.volume = 0.5;
+        
+        const enableSound = () => {
+            setSoundEnabled(true);
+            window.removeEventListener("click", enableSound);
+        };
+        window.addEventListener("click", enableSound);
+        return () => window.removeEventListener("click", enableSound);
+    }, []);
 
     // Fetch organization first
     useEffect(() => {
@@ -81,7 +97,24 @@ export default function OrdersDashboard() {
             const res = await fetch(`/api/orders/${orgId}`);
             if (res.ok) {
                 const data = await res.json();
-                setOrders(data.orders || []);
+                const fetchedOrders = data.orders || [];
+                
+                // Detect new pending orders for sound alert
+                if (prevOrderIds.current.size > 0 && fetchedOrders.length > 0) {
+                    const hasNewPending = fetchedOrders.some((o: Order) => 
+                        o.status === "pending" && !prevOrderIds.current.has(o.id)
+                    );
+                    
+                    if (hasNewPending && soundEnabled && audioRef.current) {
+                        audioRef.current.play().catch(e => console.warn("Audio blocked:", e));
+                    }
+                }
+
+                // Update seen order IDs
+                const newIds = new Set(fetchedOrders.map((o: Order) => o.id));
+                prevOrderIds.current = newIds;
+                
+                setOrders(fetchedOrders);
             }
         } catch (err) {
             console.error("Failed to fetch dashboard data:", err);
@@ -211,6 +244,14 @@ export default function OrdersDashboard() {
                                 {organization.is_open_manually ? "Open" : "Closed"}
                             </div>
                         )}
+                        <div className={cn(
+                            "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                            soundEnabled 
+                                ? "bg-emerald-500/10 text-emerald-500/60" 
+                                : "bg-amber-500/10 text-amber-500 animate-pulse border border-amber-500/20"
+                        )}>
+                            {soundEnabled ? "🔊 Sound Active" : "🔇 Click to Enable Sound"}
+                        </div>
                     </div>
                     <p className="text-gray-400 text-sm mt-1">
                         Manage incoming orders in real-time
