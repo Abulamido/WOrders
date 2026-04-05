@@ -82,7 +82,10 @@ export async function POST(req: NextRequest) {
             org_id: null as unknown as string,
             phone: senderPhone,
             direction: "incoming",
-            payload: body as any,
+            payload: {
+                GREENAPI_ID_RAW: process.env.GREENAPI_ID_INSTANCE || "MISSING",
+                body: body
+            } as any,
             status: messageData.typeMessage || "unknown",
         }).then(({ error }) => {
             if (error) console.error("Supabase log error:", error);
