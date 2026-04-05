@@ -13,6 +13,7 @@ import {
     sendTextMessage,
     sendButtonMessage,
     sendListMessage,
+    sendImageMessage,
     markAsRead,
 } from "./whatsapp-sender";
 import { createPaymentLink } from "./stripe";
@@ -32,13 +33,17 @@ interface CartItem {
 
 interface Session {
     orgId: string;
-    state: "idle" | "browsing" | "category" | "item_selected" | "variant" | "modifiers" | "cart" | "checkout" | "awaiting_payment";
+    state: "idle" | "browsing" | "category" | "item_selected" | "variant" | "modifiers" | "cart" 
+           | "checkout_name" | "checkout_type" | "checkout_address" | "checkout_payment" | "checkout_complete" | "awaiting_payment";
     selectedCategory?: string;
     selectedItem?: MenuItem;
     selectedVariant?: string;
     selectedModifiers?: string[];
     cart: CartItem[];
-    pickupTime?: string;
+    customerName?: string;
+    orderType?: "pickup" | "delivery";
+    deliveryAddress?: string;
+    paymentMethod?: "online" | "cash";
     // Numbered menu mapping: maps "1","2","3" → action IDs like "cat_abc", "item_xyz"
     lastMenuOptions?: { id: string; title: string }[];
 }
@@ -182,8 +187,9 @@ export async function processMessage(
         } else if (resolvedInput === "add_more") {
             session.state = "browsing";
             await sendCategories(from, org, session);
-        } else if (resolvedInput.startsWith("pickup_")) {
-            await handlePickupTime(from, org, resolvedInput, session);
+        } else if (session.state.startsWith("checkout_")) {
+            await processCheckoutInput(from, org, userInput, session); // pass the raw userInput so we can get exactly what they typed
+
         } else if (resolvedInput === "history") {
             await handleOrderHistory(from, org, session);
         } else if (resolvedInput === "reorder") {
@@ -343,6 +349,11 @@ async function handleItemSelect(
 
     session.selectedItem = item;
 
+    // Send product image if available
+    if (item.image_url) {
+        await sendImageMessage(phone, item.image_url, `*${item.name}*\n${item.description || ""}`);
+    }
+
     // If item has variants, show variant selection
     if (item.variants && item.variants.length > 0) {
         session.state = "variant";
@@ -354,7 +365,7 @@ async function handleItemSelect(
         setMenuOptions(session, variantOptions);
         await sendListMessage(
             phone,
-            `${item.name}\n${item.description || ""}\n\nSelect a size:`,
+            `Select a size for ${item.name}:`,
             "Choose Size",
             [{ title: "Sizes", rows: variantOptions }]
         );
@@ -439,40 +450,84 @@ async function handleCartAction(
             return;
         }
 
-        // Ask for pickup time
+        session.state = "checkout_type"; 
+        // We set to checkout_type because we skip name (WhatsApp handles phone inherently, but what about name? The user said we can skip asking for *phone* "since whatsapp provides it". BUT WhatsApp doesn't always provide a proper name, sometimes it's just a raw number. Wait, we DO get senderName natively! `messageData.senderData.senderName`! I can use it. But wait, I'm inside handleCartAction, I don't have senderName here unless I grab it. I can just ask for name, or assume we already have it.)
+
+        // Wait, let's just ask for Name properly because Telegram asks for it, and WhatsApp profile names are sometimes emojis.
+        session.state = "checkout_name";
+        await sendTextMessage(phone, "📝 Let's get your order ready!\n\nPlease reply with your *Full Name*.");
+    }
+
+}
+
+/** MULTI-STEP CHECKOUT FLOW */
+
+async function processCheckoutInput(phone: string, org: Organization, rawInput: string, session: Session) {
+    // Resolve any numbered replies if they pressed an option
+    const input = resolveNumberedInput(rawInput, session);
+
+    if (session.state === "checkout_name") {
+        session.customerName = rawInput; // save their raw typed name
+        session.state = "checkout_type";
         const options = [
-            { id: "pickup_15", title: "15 min" },
-            { id: "pickup_30", title: "30 min" },
-            { id: "pickup_60", title: "1 hour" },
+            { id: "checkout_type:pickup", title: "🚶 Pick Up" },
+            { id: "checkout_type:delivery", title: "🚚 Delivery" }
         ];
         setMenuOptions(session, options);
-        await sendButtonMessage(
-            phone,
-            "⏰ When would you like to pick up?",
-            options
-        );
-        session.state = "checkout";
+        await sendButtonMessage(phone, "How would you like to receive your order?", options);
+        return;
+    }
+    
+    if (session.state === "checkout_type") {
+        if (input === "checkout_type:pickup") {
+            session.orderType = "pickup";
+            session.state = "checkout_payment";
+            const options = [
+                { id: "checkout_payment:online", title: "💳 Pay Online (Card)" },
+                { id: "checkout_payment:cash", title: "💵 Pay on Pick Up" }
+            ];
+            setMenuOptions(session, options);
+            await sendButtonMessage(phone, "How would you like to pay?", options);
+        } else if (input === "checkout_type:delivery") {
+            session.orderType = "delivery";
+            session.state = "checkout_address";
+            await sendTextMessage(phone, "📍 Please enter your *Delivery Address* (Building, Street, Room).");
+        } else {
+            await sendTextMessage(phone, "Please reply with a valid number for Pick Up or Delivery.");
+        }
+        return;
+    }
+
+    if (session.state === "checkout_address") {
+        session.deliveryAddress = rawInput;
+        // For delivery, payment is strictly online
+        session.paymentMethod = "online";
+        await finalizeOrder(phone, org, session);
+        return;
+    }
+
+    if (session.state === "checkout_payment") {
+        if (input === "checkout_payment:online") {
+            session.paymentMethod = "online";
+            await finalizeOrder(phone, org, session);
+        } else if (input === "checkout_payment:cash") {
+            session.paymentMethod = "cash";
+            await finalizeOrder(phone, org, session);
+        } else {
+            await sendTextMessage(phone, "Please reply with a valid number for Online or Cash.");
+        }
+        return;
     }
 }
 
-/** Handle pickup time selection and create order + payment */
-async function handlePickupTime(
-    phone: string,
-    org: Organization,
-    input: string,
-    session: Session
-) {
-    const minutes = parseInt(input.replace("pickup_", ""), 10);
-    const pickupTime = new Date(Date.now() + minutes * 60000).toISOString();
-    session.pickupTime = pickupTime;
-
+async function finalizeOrder(phone: string, org: Organization, session: Session) {
     const supabase = createServiceClient();
-
-    // Upsert customer
+    
+    // Upsert customer (we already have phone)
     const { data: customer } = await supabase
         .from("customers")
         .upsert(
-            { org_id: org.id, phone, order_count: 0, total_spent: 0, preferences: {} },
+            { org_id: org.id, phone, name: session.customerName || "WhatsApp Customer" },
             { onConflict: "org_id,phone" }
         )
         .select()
@@ -480,9 +535,11 @@ async function handlePickupTime(
 
     const subtotal = session.cart.reduce((sum, item) => sum + item.total_price, 0);
     const taxAmount = Math.round(subtotal * 0.08 * 100) / 100; // 8% tax
-
-    // Monetization: Calculate Platform Fee (Agency Commission)
+    const deliveryFee = session.orderType === "delivery" ? 5.00 : 0.00;
+    
+    // Monetization: Calculate Platform Fee (Revenue Share)
     let platformFeePercent = org.platform_fee_percent || 5.0;
+
     if (org.agency_id) {
         const { data: agency } = await supabase
             .from("agencies")
@@ -491,11 +548,12 @@ async function handlePickupTime(
             .single();
         if (agency) platformFeePercent = agency.platform_fee_percent;
     }
+
     const platformFee = Math.round((subtotal * (platformFeePercent / 100)) * 100) / 100;
+    
+    // Customer pays Subtotal + Tax + Delivery.
+    const totalAmount = Math.round((subtotal + taxAmount + deliveryFee) * 100) / 100;
 
-    const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
-
-    // Create order
     const orderItems: OrderItem[] = session.cart.map((item) => ({
         item_id: item.item_id,
         name: item.name,
@@ -512,14 +570,18 @@ async function handlePickupTime(
             org_id: org.id,
             customer_id: customer?.id || null,
             customer_phone: phone,
+            customer_name: session.customerName,
             items_json: orderItems,
             subtotal,
             tax_amount: taxAmount,
+            delivery_fee: deliveryFee,
             platform_fee: platformFee,
             total_amount: totalAmount,
             status: "pending",
             payment_status: "pending",
-            pickup_time: pickupTime,
+            order_type: session.orderType,
+            delivery_address: session.deliveryAddress,
+            payment_method: session.paymentMethod,
         })
         .select()
         .single();
@@ -537,47 +599,44 @@ async function handlePickupTime(
         return;
     }
 
-    // Create Stripe payment link
-    try {
-        const paymentUrl = await createPaymentLink({
-            orderId: order.id,
-            orgName: org.name,
-            items: session.cart.map((item) => ({
-                name: `${item.name}${item.variant ? ` (${item.variant})` : ""}`,
-                quantity: item.quantity,
-                price: item.total_price,
-            })),
-            totalAmount,
-            customerPhone: phone,
-            agencyId: org.agency_id,
-        });
+    const summaryText = `📋 Order Summary:\n${session.cart.map((i) => `  ${i.quantity}x ${i.name}${i.variant ? ` (${i.variant})` : ""} — ${formatCurrency(i.total_price)}`).join("\n")}\n\nSubtotal: ${formatCurrency(subtotal)}\nTax: ${formatCurrency(taxAmount)}\n${deliveryFee > 0 ? `Delivery: ${formatCurrency(deliveryFee)}\n` : ""}💰 Total: ${formatCurrency(totalAmount)}\nType: ${session.orderType === 'delivery' ? '🚚 Delivery' : '🚶 Pick Up'}\nPayment: ${session.paymentMethod === 'online' ? '💳 Online' : '💵 Cash'}`;
 
-        const pickupTimeStr = new Date(pickupTime).toLocaleTimeString("en-US", {
-            hour: "numeric",
-            minute: "2-digit",
-        });
+    // --- Notify Vendor ---
+    if (org.notification_phone) {
+        const vendorMsg = `🔔 *New Order!* (#${order.id.slice(0, 8)})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})`;
+        const vendorOptions = [
+            { id: `order_accept_${order.id}`, title: "✅ Accept" },
+            { id: `order_reject_${order.id}`, title: "❌ Reject" },
+        ];
+        await sendButtonMessage(org.notification_phone, vendorMsg, vendorOptions);
+    }
 
-        await sendTextMessage(
-            phone,
-            `📋 Order Summary:\n${session.cart.map((i) => `  ${i.quantity}x ${i.name}${i.variant ? ` (${i.variant})` : ""} — ${formatCurrency(i.total_price)}`).join("\n")}\n\nSubtotal: ${formatCurrency(subtotal)}\nTax: ${formatCurrency(taxAmount)}\n💰 Total: ${formatCurrency(totalAmount)}\n⏰ Pickup: ${pickupTimeStr}\n\n💳 Pay here: ${paymentUrl}`
-        );
+    if (session.paymentMethod === "online" && totalAmount > 0) {
+        // Create Stripe payment link
+        try {
+            const paymentUrl = await createPaymentLink({
+                orderId: order.id,
+                orgName: org.name,
+                items: session.cart.map((item) => ({
+                    name: `${item.name}${item.variant ? ` (${item.variant})` : ""}`,
+                    quantity: item.quantity,
+                    price: item.total_price,
+                })),
+                totalAmount,
+                customerPhone: phone,
+                agencyId: org.agency_id,
+            });
 
-        // --- Notify Vendor ---
-        if (org.notification_phone) {
-            const vendorMsg = `🔔 *New Order!* (#${order.id.slice(0, 8)})\n\n👤 From: ${phone}\n⏰ Pickup: ${pickupTimeStr}\n\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)}`;
-
-            const vendorOptions = [
-                { id: `order_accept_${order.id}`, title: "✅ Accept" },
-                { id: `order_reject_${order.id}`, title: "❌ Reject" },
-            ];
-            // Note: vendor gets the numbered menu too
-            await sendButtonMessage(org.notification_phone, vendorMsg, vendorOptions);
+            await sendTextMessage(phone, `${summaryText}\n\n💳 Pay here: ${paymentUrl}`);
+            session.state = "awaiting_payment";
+        } catch (error) {
+            console.error("Payment link error:", error);
+            await sendTextMessage(phone, "Sorry, there was a payment error. Please try again.");
         }
-
-        session.state = "awaiting_payment";
-    } catch (error) {
-        console.error("Payment link error:", error);
-        await sendTextMessage(phone, "Sorry, there was a payment error. Please try again.");
+    } else {
+        await sendTextMessage(phone, `✅ Your order has been placed successfully!\n\n${summaryText}\n\nWe will notify you when it's ready.`);
+        session.state = "checkout_complete";
+        clearSession(phone, org.id); // clear cart after successful cash/free placement
     }
 }
 
