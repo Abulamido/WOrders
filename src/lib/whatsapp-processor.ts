@@ -506,7 +506,7 @@ async function handlePickupTime(
         total_price: item.total_price,
     }));
 
-    const { data: order } = await supabase
+    const { data: order, error: insertError } = await supabase
         .from("orders")
         .insert({
             org_id: org.id,
@@ -525,6 +525,14 @@ async function handlePickupTime(
         .single();
 
     if (!order) {
+        console.error("Order Insert Error:", insertError);
+        await supabase.from("whatsapp_logs").insert({
+            org_id: org.id,
+            phone: phone,
+            direction: "incoming",
+            payload: { error_msg: "Order Insert Error", details: insertError } as any,
+            status: "CRASH",
+        });
         await sendTextMessage(phone, "Sorry, there was an error creating your order. Please try again.");
         return;
     }
