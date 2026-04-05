@@ -78,17 +78,29 @@ export async function PATCH(
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Send Telegram notification to customer on status change
-    if (order && (status === "preparing" || status === "ready")) {
-        const { sendMessage } = await import("@/lib/telegram-sender");
-        const statusMessages: Record<string, string> = {
-            preparing: `👨‍🍳 *Your order from ${order.organizations?.name || "the cafeteria"} is being prepared!* We'll let you know when it's ready.`,
-            ready: `✅ *Your order is ready for pickup!* Come get it while it's hot! 🍔🍟`,
-        };
-        
-        const chatId = order.telegram_chat_id;
-        if (chatId) {
-            await sendMessage(chatId as unknown as string, statusMessages[status]).catch(console.error);
+    // Send notification to customer on status change
+    if (order && (status === "preparing" || status === "ready" || status === "completed")) {
+        const orgName = order.organizations?.name || "the restaurant";
+        const shortId = order.id.slice(0, 8);
+
+        if (order.telegram_chat_id) {
+            // --- Telegram order: notify via Telegram ---
+            const { sendMessage } = await import("@/lib/telegram-sender");
+            const statusMessages: Record<string, string> = {
+                preparing: `👨‍🍳 *Your order from ${orgName} is being prepared!* We'll let you know when it's ready.`,
+                ready: `✅ *Your order is ready for pickup!* Come get it while it's hot! 🍔🍟`,
+                completed: `🎉 *Your order from ${orgName} is complete!* Enjoy your meal!`,
+            };
+            await sendMessage(order.telegram_chat_id as unknown as string, statusMessages[status]).catch(console.error);
+        } else if (order.customer_phone) {
+            // --- WhatsApp order: notify via Green API ---
+            const { sendTextMessage } = await import("@/lib/whatsapp-sender");
+            const statusMessages: Record<string, string> = {
+                preparing: `👨‍🍳 *Good news!* ${orgName} has started preparing your order (#${shortId}). We'll let you know when it's ready!`,
+                ready: `📦 *Your order (#${shortId}) from ${orgName} is ready!* ${order.order_type === 'delivery' ? "It's on its way!" : "Come pick it up!"}`,
+                completed: `✅ *Your order (#${shortId}) from ${orgName} is complete!* Enjoy your meal! 🍽️`,
+            };
+            await sendTextMessage(order.customer_phone, statusMessages[status]).catch(console.error);
         }
     }
 

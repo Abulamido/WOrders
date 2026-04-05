@@ -161,8 +161,19 @@ export async function processMessage(
 
     // Route based on state + input
     try {
+        // --- Vendor text commands: ACCEPT / REJECT / READY / DONE <orderId> ---
+        const vendorCmd = userInput.match(/^(accept|reject|ready|done)\s+([a-f0-9-]+)/i);
+        if (vendorCmd) {
+            const action = vendorCmd[1].toLowerCase() as "accept" | "reject" | "ready" | "done";
+            const orderId = vendorCmd[2];
+            await handleVendorOrderAction(from, action, orderId);
+            return;
+        }
+
         if (resolvedInput.startsWith("order_accept_") || resolvedInput.startsWith("order_reject_")) {
-            await handleVendorOrderAction(from, resolvedInput);
+            const isAccept = resolvedInput.startsWith("order_accept_");
+            const oid = resolvedInput.replace(isAccept ? "order_accept_" : "order_reject_", "");
+            await handleVendorOrderAction(from, isAccept ? "accept" : "reject", oid);
         } else if (
             userInput === "hi" ||
             userInput === "hello" ||
@@ -603,12 +614,9 @@ async function finalizeOrder(phone: string, org: Organization, session: Session)
 
     // --- Notify Vendor ---
     if (org.notification_phone) {
-        const vendorMsg = `🔔 *New Order!* (#${order.id.slice(0, 8)})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})`;
-        const vendorOptions = [
-            { id: `order_accept_${order.id}`, title: "✅ Accept" },
-            { id: `order_reject_${order.id}`, title: "❌ Reject" },
-        ];
-        await sendButtonMessage(org.notification_phone, vendorMsg, vendorOptions);
+        const shortId = order.id.slice(0, 8);
+        const vendorMsg = `🔔 *New Order!* (#${shortId})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})\n\n--- Reply to manage ---\n✅ Type: ACCEPT ${order.id}\n❌ Type: REJECT ${order.id}`;
+        await sendTextMessage(org.notification_phone, vendorMsg);
     }
 
     if (session.paymentMethod === "online" && totalAmount > 0) {
@@ -707,60 +715,70 @@ async function handleReorder(phone: string, org: Organization) {
     await showCartSummary(phone, session);
 }
 
-/** Handle Vendor Accept/Reject actions from WhatsApp buttons */
-async function handleVendorOrderAction(vendorPhone: string, input: string) {
-    const isAccept = input.startsWith("order_accept_");
-    const orderId = input.replace(isAccept ? "order_accept_" : "order_reject_", "");
-
+/** Handle Vendor order management commands (ACCEPT / REJECT / READY / DONE) */
+async function handleVendorOrderAction(vendorPhone: string, action: "accept" | "reject" | "ready" | "done", orderId: string) {
     const supabase = createServiceClient();
 
-    const { data: order } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("id", orderId)
-        .single();
+    // Try matching either the full UUID or the short 8-char prefix
+    let orderQuery = supabase.from("orders").select("*");
+    if (orderId.length >= 36) {
+        orderQuery = orderQuery.eq("id", orderId);
+    } else {
+        orderQuery = orderQuery.ilike("id", `${orderId}%`);
+    }
+
+    const { data: order } = await orderQuery.limit(1).single();
 
     if (!order) {
-        await sendTextMessage(vendorPhone, "Order not found.");
+        await sendTextMessage(vendorPhone, `❌ Order not found for ID: ${orderId}`);
         return;
     }
 
     const { data: orgData } = await supabase
         .from("organizations")
-        .select("name, notification_phone")
+        .select("name")
         .eq("id", order.org_id)
         .single();
 
-    const orgName = orgData?.name || "the cafeteria";
+    const orgName = orgData?.name || "the restaurant";
+    const shortId = order.id.slice(0, 8);
 
-    const newStatus = isAccept ? "preparing" : "cancelled";
+    const statusMap: Record<string, string> = {
+        accept: "preparing",
+        reject: "cancelled",
+        ready: "ready",
+        done: "completed",
+    };
+    const newStatus = statusMap[action];
 
     const { error } = await supabase
         .from("orders")
         .update({ status: newStatus })
-        .eq("id", orderId);
+        .eq("id", order.id);
 
     if (error) {
-        await sendTextMessage(vendorPhone, "Error updating order status.");
+        await sendTextMessage(vendorPhone, `❌ Error updating order #${shortId}.`);
         return;
     }
 
-    // Notify Vendor of success
-    await sendTextMessage(
-        vendorPhone,
-        `Order #${orderId.slice(0, 8)} has been ${isAccept ? "ACCEPTED ✅" : "REJECTED ❌"}.`
-    );
+    // --- Vendor Confirmation ---
+    const vendorMessages: Record<string, string> = {
+        accept: `✅ Order #${shortId} *ACCEPTED* — now preparing.\n\nWhen ready, type: READY ${order.id}`,
+        reject: `❌ Order #${shortId} *REJECTED* and cancelled.`,
+        ready: `📦 Order #${shortId} marked as *READY*.\n\nWhen picked up/delivered, type: DONE ${order.id}`,
+        done: `🎉 Order #${shortId} marked as *COMPLETED*. Great job!`,
+    };
+    await sendTextMessage(vendorPhone, vendorMessages[action]);
 
-    // Notify Customer
-    if (isAccept) {
-        await sendTextMessage(
-            order.customer_phone,
-            `👨‍🍳 *Good news!* ${orgName} has accepted your order and is now preparing it. We'll let you know when it's ready for pickup!`
-        );
-    } else {
-        await sendTextMessage(
-            order.customer_phone,
-            `⚠️ *Update:* Your order at ${orgName} could not be accepted and has been cancelled. Please contact the cafeteria if you have questions.`
-        );
+    // --- Customer Notification (WhatsApp only — no Telegram mixing) ---
+    // Only notify if this is a WhatsApp order (no telegram_chat_id)
+    if (!order.telegram_chat_id && order.customer_phone) {
+        const customerMessages: Record<string, string> = {
+            accept: `👨‍🍳 *Good news!* ${orgName} has accepted your order (#${shortId}) and is now preparing it. We'll let you know when it's ready!`,
+            reject: `⚠️ *Update:* Your order (#${shortId}) at ${orgName} could not be accepted and has been cancelled. If you already paid, a refund will be processed.`,
+            ready: `📦 *Your order (#${shortId}) from ${orgName} is ready!* ${order.order_type === 'delivery' ? 'It\'s on its way!' : 'Come pick it up!'}`,
+            done: `✅ *Your order (#${shortId}) from ${orgName} is complete!* Enjoy your meal! 🍽️`,
+        };
+        await sendTextMessage(order.customer_phone, customerMessages[action]);
     }
 }

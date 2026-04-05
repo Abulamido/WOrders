@@ -1,0 +1,69 @@
+[
+  {
+    "id": "fe0ab388-d89e-4564-966c-68a7cd5401f1",
+    "org_id": "87cfd891-85ef-44db-80ef-1b87bd4e0516",
+    "phone": "2347019970002",
+    "direction": "incoming",
+    "payload": {
+      "details": {
+        "code": "PGRST204",
+        "hint": null,
+        "details": null,
+        "message": "Could not find the 'pickup_time' column of 'orders' in the schema cache"
+      },
+      "error_msg": "Order Insert Error"
+    },
+    "status": "CRASH",
+    "created_at": "2026-04-05T23:06:19.089957+00:00"
+  },
+  {
+    "id": "93c5e6c8-9d65-4107-819f-e3ccd7e8f162",
+    "org_id": "87cfd891-85ef-44db-80ef-1b87bd4e0516",
+    "phone": "2347019970002",
+    "direction": "incoming",
+    "payload": {
+      "id": "3A8DC6944BF4C2B8C6CA",
+      "from": "2347019970002",
+      "text": {
+        "body": "1"
+      },
+      "type": "text"
+    },
+    "status": "received",
+    "created_at": "2026-04-05T23:06:18.679243+00:00"
+  },
+  {
+    "id": "c3fdf74e-a038-4137-80bf-1d8a536cdf94",
+    "org_id": null,
+    "phone": "2347019970002",
+    "direction": "incoming",
+    "payload": {
+      "body": {
+        "idMessage": "3A8DC6944BF4C2B8C6CA",
+        "timestamp": 1775430377,
+        "senderData": {
+          "chatId": "2347019970002@c.us",
+          "sender": "2347019970002@c.us",
+          "chatName": "Abu",
+          "senderName": "Abu",
+          "senderContactName": "Abu"
+        },
+        "messageData": {
+          "typeMessage": "textMessage",
+          "textMessageData": {
+            "textMessage": "1"
+          }
+        },
+        "typeWebhook": "incomingMessageReceived",
+        "instanceData": {
+          "wid": "2347077241096@c.us",
+          "idInstance": 7107576555,
+          "typeInstance": "whatsapp"
+        }
+      },
+      "GREENAPI_ID_RAW": "7107576555"
+    },
+    "status": "textMessage",
+    "created_at": "2026-04-05T23:06:18.251431+00:00"
+  }
+]

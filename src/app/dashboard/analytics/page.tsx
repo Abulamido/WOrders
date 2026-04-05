@@ -53,7 +53,8 @@ export default function AnalyticsDashboard() {
         topItems: any[];
         hourlyData: any[];
         ordersByStatus: Record<string, number>;
-    }>({ stats: [], topItems: [], hourlyData: [], ordersByStatus: {} });
+        channelBreakdown: { whatsapp: number; telegram: number };
+    }>({ stats: [], topItems: [], hourlyData: [], ordersByStatus: {}, channelBreakdown: { whatsapp: 0, telegram: 0 } });
 
     const fetchAnalytics = useCallback(async (orgId: string) => {
         setLoading(true);
@@ -77,6 +78,7 @@ export default function AnalyticsDashboard() {
                         topItems: [],
                         hourlyData: [],
                         ordersByStatus: {},
+                        channelBreakdown: { whatsapp: 0, telegram: 0 },
                     });
                     setLoading(false);
                     return;
@@ -99,6 +101,10 @@ export default function AnalyticsDashboard() {
                 orders.forEach((o: any) => {
                     ordersByStatus[o.status] = (ordersByStatus[o.status] || 0) + 1;
                 });
+
+                // --- Channel breakdown ---
+                const telegramCount = orders.filter((o: any) => o.telegram_chat_id).length;
+                const whatsappCount = totalCount - telegramCount;
 
                 // --- Top items ---
                 const itemMap: Record<string, { count: number; revenue: number }> = {};
@@ -152,6 +158,7 @@ export default function AnalyticsDashboard() {
                     topItems,
                     hourlyData,
                     ordersByStatus,
+                    channelBreakdown: { whatsapp: whatsappCount, telegram: telegramCount },
                 });
             }
         } catch (err) {
@@ -246,7 +253,7 @@ export default function AnalyticsDashboard() {
             ) : (
                 <>
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-4">
                         {data.stats.map((stat) => {
                             const Icon = stat.icon;
                             const colors = colorMap[stat.color] || colorMap.emerald;
@@ -287,6 +294,24 @@ export default function AnalyticsDashboard() {
                                 </div>
                             );
                         })}
+                    </div>
+
+                    {/* Channel Breakdown */}
+                    <div className="flex gap-4 mb-8">
+                        <div className="flex-1 bg-[#141420] border border-white/5 rounded-xl p-4 flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-lg">📱</div>
+                            <div>
+                                <p className="text-2xl font-bold text-green-400">{data.channelBreakdown.whatsapp}</p>
+                                <p className="text-xs text-gray-500">WhatsApp Orders</p>
+                            </div>
+                        </div>
+                        <div className="flex-1 bg-[#141420] border border-white/5 rounded-xl p-4 flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-lg">💬</div>
+                            <div>
+                                <p className="text-2xl font-bold text-blue-400">{data.channelBreakdown.telegram}</p>
+                                <p className="text-xs text-gray-500">Telegram Orders</p>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">

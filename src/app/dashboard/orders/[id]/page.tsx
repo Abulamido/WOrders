@@ -220,23 +220,42 @@ export default function OrderDetailsPage() {
                                 <p className="font-medium">{order.customer_name || "Guest User"}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Phone (Telegram)</p>
+                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Phone</p>
                                 <div className="flex items-center gap-2">
                                     <Phone size={14} className="text-gray-400" />
                                     <p className="font-mono">{order.customer_phone}</p>
                                 </div>
                             </div>
-                            {order.pickup_time && (
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Channel</p>
+                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full border ${order.telegram_chat_id
+                                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                    : 'bg-green-500/10 text-green-400 border-green-500/20'
+                                }`}>
+                                    {order.telegram_chat_id ? '💬 Telegram' : '📱 WhatsApp'}
+                                </span>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Order Type</p>
+                                <p className="font-medium">
+                                    {order.order_type === 'delivery' ? '🚚 Delivery' : '🚶 Pick Up'}
+                                </p>
+                            </div>
+                            {order.delivery_address && (
                                 <div>
-                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Scheduled Pickup</p>
-                                    <div className="flex items-center gap-2">
-                                        <MapPin size={14} className="text-gray-400" />
-                                        <p className="font-medium text-amber-400">
-                                            {new Date(order.pickup_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-                                        </p>
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Delivery Address</p>
+                                    <div className="flex items-start gap-2">
+                                        <MapPin size={14} className="text-gray-400 mt-0.5" />
+                                        <p className="font-medium text-amber-400">{order.delivery_address}</p>
                                     </div>
                                 </div>
                             )}
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Payment</p>
+                                <p className="font-medium">
+                                    {order.payment_method === 'cash' ? '💵 Cash' : '💳 Online'}
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
