@@ -1,118 +1,137 @@
 /**
- * WhatsApp Cloud API message sender.
- * Handles sending text, button, and list messages via Meta API.
+ * WhatsApp message sender via Green API.
+ * Replaces the Meta Cloud API sender with Green API endpoints.
+ * 
+ * Green API docs: https://green-api.com/en/docs/api/sending/SendMessage/
+ * Chat ID format: "79876543210@c.us" for personal chats
  */
 
+const GREENAPI_ID = process.env.GREENAPI_ID_INSTANCE || "";
+const GREENAPI_TOKEN = process.env.GREENAPI_API_TOKEN || "";
 
+function getBaseUrl() {
+    return `https://api.green-api.com/waInstance${GREENAPI_ID}`;
+}
 
-async function sendRequest(payload: Record<string, unknown>) {
-    const WHATSAPP_API_URL = `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+/** Convert phone number to Green API chatId format */
+function toChatId(phone: string): string {
+    // Already in chatId format
+    if (phone.endsWith("@c.us") || phone.endsWith("@g.us")) return phone;
+    // Strip leading + if present
+    const cleaned = phone.replace(/^\+/, "").replace(/\D/g, "");
+    return `${cleaned}@c.us`;
+}
 
-    const logMsg = `[${new Date().toISOString()}] Sending to Meta: ${JSON.stringify(payload)}\n`;
-    console.log(logMsg);
+/** Generic Green API request helper */
+async function greenApiRequest(method: string, payload: Record<string, unknown>) {
+    const url = `${getBaseUrl()}/${method}/${GREENAPI_TOKEN}`;
 
-    const response = await fetch(WHATSAPP_API_URL, {
+    console.log(`[GreenAPI] ${method}:`, JSON.stringify(payload));
+
+    const response = await fetch(url, {
         method: "POST",
-        headers: {
-            Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-            "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
         let errorData;
-        try {
-            errorData = await response.json();
-        } catch {
-            errorData = "Could not parse error JSON";
-        }
-        const errLog = `WhatsApp API error: ${response.status} - ${JSON.stringify(errorData)}`;
-        console.error(errLog);
-        throw new Error(errLog);
+        try { errorData = await response.json(); } catch { errorData = await response.text(); }
+        const errMsg = `Green API error (${method}): ${response.status} - ${JSON.stringify(errorData)}`;
+        console.error(errMsg);
+        throw new Error(errMsg);
     }
 
     return response.json();
 }
 
-
 /** Send a plain text message */
 export async function sendTextMessage(to: string, text: string) {
-    return sendRequest({
-        messaging_product: "whatsapp",
-        to,
-        type: "text",
-        text: { body: text },
+    return greenApiRequest("sendMessage", {
+        chatId: toChatId(to),
+        message: text,
     });
 }
 
-/** Send an interactive button message (max 3 buttons) */
+/** 
+ * Send a "button" message as numbered text menu.
+ * Green API (non-WABA) doesn't support interactive buttons,
+ * so we render them as a numbered list the user replies to.
+ */
 export async function sendButtonMessage(
     to: string,
     bodyText: string,
     buttons: { id: string; title: string }[]
 ) {
-    return sendRequest({
-        messaging_product: "whatsapp",
-        to,
-        type: "interactive",
-        interactive: {
-            type: "button",
-            body: { text: bodyText },
-            action: {
-                buttons: buttons.map((btn) => ({
-                    type: "reply",
-                    reply: { id: btn.id, title: btn.title.slice(0, 20) },
-                })),
-            },
-        },
+    const optionLines = buttons.map((btn, i) => `${i + 1}. ${btn.title}`).join("\n");
+    const fullMessage = `${bodyText}\n\n${optionLines}\n\n_Reply with a number to choose._`;
+
+    return greenApiRequest("sendMessage", {
+        chatId: toChatId(to),
+        message: fullMessage,
     });
 }
 
-/** Send an interactive list message (max 10 items per section) */
+/**
+ * Send a "list" message as numbered text menu.
+ * Flattens all sections into a single numbered list.
+ */
 export async function sendListMessage(
     to: string,
     bodyText: string,
-    buttonTitle: string,
+    _buttonTitle: string,
     sections: {
         title: string;
         rows: { id: string; title: string; description?: string }[];
     }[]
 ) {
-    return sendRequest({
-        messaging_product: "whatsapp",
-        to,
-        type: "interactive",
-        interactive: {
-            type: "list",
-            body: { text: bodyText },
-            action: {
-                button: buttonTitle.slice(0, 20),
-                sections,
-            },
-        },
+    let counter = 0;
+    const sectionTexts = sections.map((section) => {
+        const rowLines = section.rows.map((row) => {
+            counter++;
+            const desc = row.description ? ` — ${row.description}` : "";
+            return `${counter}. ${row.title}${desc}`;
+        }).join("\n");
+        return `*${section.title}*\n${rowLines}`;
+    }).join("\n\n");
+
+    const fullMessage = `${bodyText}\n\n${sectionTexts}\n\n_Reply with a number to choose._`;
+
+    return greenApiRequest("sendMessage", {
+        chatId: toChatId(to),
+        message: fullMessage,
     });
 }
 
-/** Send an image message */
+/** Send an image message via URL */
 export async function sendImageMessage(
     to: string,
     imageUrl: string,
     caption?: string
 ) {
-    return sendRequest({
-        messaging_product: "whatsapp",
-        to,
-        type: "image",
-        image: { link: imageUrl, caption },
+    return greenApiRequest("sendFileByUrl", {
+        chatId: toChatId(to),
+        urlFile: imageUrl,
+        fileName: "image.jpg",
+        caption: caption || "",
     });
 }
 
-/** Mark a message as read */
+/** Mark a chat as read */
 export async function markAsRead(messageId: string) {
-    return sendRequest({
-        messaging_product: "whatsapp",
-        status: "read",
-        message_id: messageId,
-    });
+    // Green API uses ReadChat with chatId, not message ID.
+    // We'll silently skip this since we don't have chatId here.
+    // The webhook handler can call this directly if needed.
+    console.log(`[GreenAPI] markAsRead skipped for messageId: ${messageId}`);
+}
+
+/** Mark a specific chat as read (call from webhook where we have chatId) */
+export async function markChatAsRead(chatId: string) {
+    try {
+        await greenApiRequest("readChat", {
+            chatId: toChatId(chatId),
+        });
+    } catch (e) {
+        console.warn("[GreenAPI] markChatAsRead failed:", e);
+    }
 }

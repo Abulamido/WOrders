@@ -2,6 +2,9 @@
  * WhatsApp message processor.
  * Handles incoming WhatsApp messages and routes them through the order flow.
  * 
+ * Adapted for Green API: uses numbered text menus instead of interactive buttons.
+ * Users reply with "1", "2", etc. to select options.
+ * 
  * Flow: Hi → Browse Menu → Select Category → Select Item → Variants/Modifiers → Cart → Checkout → Pay
  */
 
@@ -36,6 +39,8 @@ interface Session {
     selectedModifiers?: string[];
     cart: CartItem[];
     pickupTime?: string;
+    // Numbered menu mapping: maps "1","2","3" → action IDs like "cat_abc", "item_xyz"
+    lastMenuOptions?: { id: string; title: string }[];
 }
 
 const sessions = new Map<string, Session>();
@@ -50,6 +55,25 @@ function getSession(phone: string, orgId: string): Session {
 
 function clearSession(phone: string, orgId: string) {
     sessions.delete(`${phone}:${orgId}`);
+}
+
+/**
+ * Resolve numbered input ("1", "2", etc.) to the mapped action ID.
+ * Falls back to the raw input if no mapping exists.
+ */
+function resolveNumberedInput(input: string, session: Session): string {
+    const num = parseInt(input, 10);
+    if (!isNaN(num) && session.lastMenuOptions && num >= 1 && num <= session.lastMenuOptions.length) {
+        return session.lastMenuOptions[num - 1].id;
+    }
+    return input;
+}
+
+/**
+ * Store menu options in session for numbered reply mapping.
+ */
+function setMenuOptions(session: Session, options: { id: string; title: string }[]) {
+    session.lastMenuOptions = options;
 }
 
 /**
@@ -88,7 +112,7 @@ export async function processMessage(
         .eq("is_active", true)
         .single();
 
-    // MVP Fallback: If no exact match (e.g. testing with default Meta test numbers), grab the first active org
+    // MVP Fallback: If no exact match, grab the first active org
     if (!org) {
         const { data: firstOrg } = await supabase
             .from("organizations")
@@ -127,44 +151,50 @@ export async function processMessage(
         }
     }
 
+    // Resolve numbered replies (e.g. "1" → "cat_abc123")
+    const resolvedInput = resolveNumberedInput(userInput, session);
+
     // Route based on state + input
     try {
-        if (userInput.startsWith("order_accept_") || userInput.startsWith("order_reject_")) {
-            await handleVendorOrderAction(from, userInput);
+        if (resolvedInput.startsWith("order_accept_") || resolvedInput.startsWith("order_reject_")) {
+            await handleVendorOrderAction(from, resolvedInput);
         } else if (
             userInput === "hi" ||
             userInput === "hello" ||
             userInput === "hey" ||
             userInput === "start" ||
+            userInput === "menu" ||
             session.state === "idle"
         ) {
-            await handleWelcome(from, org);
+            await handleWelcome(from, org, session);
             session.state = "browsing";
-        } else if (userInput === "menu") {
-            await sendCategories(from, org);
+        } else if (resolvedInput === "menu") {
+            await sendCategories(from, org, session);
             session.state = "browsing";
-        } else if (userInput.startsWith("cat_")) {
-            await handleCategorySelect(from, org, userInput, session);
-        } else if (userInput.startsWith("item_") || userInput.startsWith("soldout_") || session.state === "category") {
-            await handleItemSelect(from, org, userInput, session);
-        } else if (userInput.startsWith("var_") || session.state === "variant") {
-            await handleVariantSelect(from, org, userInput, session);
-        } else if (userInput === "add_to_cart" || userInput === "checkout") {
-            await handleCartAction(from, org, userInput, session);
-        } else if (userInput === "add_more") {
+        } else if (resolvedInput.startsWith("cat_")) {
+            await handleCategorySelect(from, org, resolvedInput, session);
+        } else if (resolvedInput.startsWith("item_") || resolvedInput.startsWith("soldout_") || session.state === "category") {
+            await handleItemSelect(from, org, resolvedInput, session);
+        } else if (resolvedInput.startsWith("var_") || session.state === "variant") {
+            await handleVariantSelect(from, org, resolvedInput, session);
+        } else if (resolvedInput === "add_to_cart" || resolvedInput === "checkout") {
+            await handleCartAction(from, org, resolvedInput, session);
+        } else if (resolvedInput === "add_more") {
             session.state = "browsing";
-            await sendCategories(from, org);
-        } else if (userInput.startsWith("pickup_")) {
-            await handlePickupTime(from, org, userInput, session);
-        } else if (userInput === "history") {
-            await handleOrderHistory(from, org);
-        } else if (userInput === "reorder") {
+            await sendCategories(from, org, session);
+        } else if (resolvedInput.startsWith("pickup_")) {
+            await handlePickupTime(from, org, resolvedInput, session);
+        } else if (resolvedInput === "history") {
+            await handleOrderHistory(from, org, session);
+        } else if (resolvedInput === "reorder") {
             await handleReorder(from, org);
         } else {
-            await sendButtonMessage(from, `I didn't understand that. What would you like to do?`, [
+            const options = [
                 { id: "menu", title: "📋 Browse Menu" },
                 { id: "history", title: "📦 My Orders" },
-            ]);
+            ];
+            setMenuOptions(session, options);
+            await sendButtonMessage(from, `I didn't understand that. What would you like to do?`, options);
         }
     } catch (error) {
         console.error("Message processing error:", error);
@@ -176,7 +206,7 @@ export async function processMessage(
 }
 
 /** Send welcome message with main options */
-async function handleWelcome(phone: string, org: Organization) {
+async function handleWelcome(phone: string, org: Organization, session: Session) {
     const supabase = createServiceClient();
     const { data: lastOrder } = await supabase
         .from("orders")
@@ -199,15 +229,16 @@ async function handleWelcome(phone: string, org: Organization) {
     const isOpen = org.is_open_manually !== false;
     const closedNote = !isOpen ? "\n\n⚠️ _We are currently closed. Feel free to browse, but ordering is paused._" : "";
 
+    setMenuOptions(session, buttons);
     await sendButtonMessage(
         phone,
-        `👋 Welcome back to ${org.name}!\nWhat would you like to do?${closedNote}`,
+        `👋 Welcome to ${org.name}!\nWhat would you like to do?${closedNote}`,
         buttons
     );
 }
 
 /** Send category list for menu browsing */
-async function sendCategories(phone: string, org: Organization) {
+async function sendCategories(phone: string, org: Organization, session: Session) {
     const supabase = createServiceClient();
     const { data: categories } = await supabase
         .from("categories")
@@ -221,20 +252,18 @@ async function sendCategories(phone: string, org: Organization) {
         return;
     }
 
+    const options = categories.map((cat) => ({
+        id: `cat_${cat.id}`,
+        title: cat.name.slice(0, 24),
+        description: cat.description?.slice(0, 72) || undefined,
+    }));
+
+    setMenuOptions(session, options);
     await sendListMessage(
         phone,
         `🍽️ ${org.name} Menu\nSelect a category to browse:`,
         "View Menu",
-        [
-            {
-                title: "Categories",
-                rows: categories.map((cat) => ({
-                    id: `cat_${cat.id}`,
-                    title: cat.name.slice(0, 24),
-                    description: cat.description?.slice(0, 72) || undefined,
-                })),
-            },
-        ]
+        [{ title: "Categories", rows: options }]
     );
 }
 
@@ -250,7 +279,6 @@ async function handleCategorySelect(
     session.state = "category";
 
     const supabase = createServiceClient();
-    // Fetch ALL items to show sold-out badges
     const { data: items } = await supabase
         .from("menu_items")
         .select("*")
@@ -264,22 +292,20 @@ async function handleCategorySelect(
         return;
     }
 
+    const options = items.map((item) => ({
+        id: item.is_available ? `item_${item.id}` : `soldout_${item.id}`,
+        title: item.is_available
+            ? `${item.name} - ${formatCurrency(item.price)}`
+            : `❌ ${item.name} - SOLD OUT`,
+        description: item.description?.slice(0, 72) || undefined,
+    }));
+
+    setMenuOptions(session, options);
     await sendListMessage(
         phone,
         `Here's what we have:`,
         "Select Item",
-        [
-            {
-                title: "Items",
-                rows: items.map((item) => ({
-                    id: item.is_available ? `item_${item.id}` : `soldout_${item.id}`,
-                    title: item.is_available
-                        ? `${item.name} - ${formatCurrency(item.price)}`
-                        : `❌ ${item.name} - SOLD OUT`,
-                    description: item.description?.slice(0, 72) || undefined,
-                })),
-            },
-        ]
+        [{ title: "Items", rows: options }]
     );
 }
 
@@ -310,7 +336,6 @@ async function handleItemSelect(
         return;
     }
 
-    // Double-check availability
     if (!item.is_available) {
         await sendTextMessage(phone, `❌ Sorry, *${item.name}* is currently sold out.`);
         return;
@@ -321,19 +346,17 @@ async function handleItemSelect(
     // If item has variants, show variant selection
     if (item.variants && item.variants.length > 0) {
         session.state = "variant";
+        const variantOptions = (item.variants as { name: string; price: number }[]).map((v) => ({
+            id: `var_${v.name}`,
+            title: `${v.name} - ${formatCurrency(v.price)}`,
+        }));
+
+        setMenuOptions(session, variantOptions);
         await sendListMessage(
             phone,
             `${item.name}\n${item.description || ""}\n\nSelect a size:`,
             "Choose Size",
-            [
-                {
-                    title: "Sizes",
-                    rows: (item.variants as { name: string; price: number }[]).map((v) => ({
-                        id: `var_${v.name}`,
-                        title: `${v.name} - ${formatCurrency(v.price)}`,
-                    })),
-                },
-            ]
+            [{ title: "Sizes", rows: variantOptions }]
         );
     } else {
         // No variants — add directly to cart
@@ -386,13 +409,15 @@ async function showCartSummary(phone: string, session: Session) {
         )
         .join("\n");
 
+    const options = [
+        { id: "add_more", title: "➕ Add More" },
+        { id: "checkout", title: "💳 Checkout" },
+    ];
+    setMenuOptions(session, options);
     await sendButtonMessage(
         phone,
         `🛒 Your Cart:\n${itemLines}\n\n💰 Total: ${formatCurrency(total)}`,
-        [
-            { id: "add_more", title: "➕ Add More" },
-            { id: "checkout", title: "💳 Checkout" },
-        ]
+        options
     );
     session.state = "cart";
 }
@@ -415,14 +440,16 @@ async function handleCartAction(
         }
 
         // Ask for pickup time
+        const options = [
+            { id: "pickup_15", title: "15 min" },
+            { id: "pickup_30", title: "30 min" },
+            { id: "pickup_60", title: "1 hour" },
+        ];
+        setMenuOptions(session, options);
         await sendButtonMessage(
             phone,
             "⏰ When would you like to pick up?",
-            [
-                { id: "pickup_15", title: "15 min" },
-                { id: "pickup_30", title: "30 min" },
-                { id: "pickup_60", title: "1 hour" },
-            ]
+            options
         );
         session.state = "checkout";
     }
@@ -527,18 +554,16 @@ async function handlePickupTime(
             `📋 Order Summary:\n${session.cart.map((i) => `  ${i.quantity}x ${i.name}${i.variant ? ` (${i.variant})` : ""} — ${formatCurrency(i.total_price)}`).join("\n")}\n\nSubtotal: ${formatCurrency(subtotal)}\nTax: ${formatCurrency(taxAmount)}\n💰 Total: ${formatCurrency(totalAmount)}\n⏰ Pickup: ${pickupTimeStr}\n\n💳 Pay here: ${paymentUrl}`
         );
 
-        // --- NEW: Notify Vendor ---
+        // --- Notify Vendor ---
         if (org.notification_phone) {
             const vendorMsg = `🔔 *New Order!* (#${order.id.slice(0, 8)})\n\n👤 From: ${phone}\n⏰ Pickup: ${pickupTimeStr}\n\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)}`;
 
-            await sendButtonMessage(
-                org.notification_phone,
-                vendorMsg,
-                [
-                    { id: `order_accept_${order.id}`, title: "✅ Accept" },
-                    { id: `order_reject_${order.id}`, title: "❌ Reject" },
-                ]
-            );
+            const vendorOptions = [
+                { id: `order_accept_${order.id}`, title: "✅ Accept" },
+                { id: `order_reject_${order.id}`, title: "❌ Reject" },
+            ];
+            // Note: vendor gets the numbered menu too
+            await sendButtonMessage(org.notification_phone, vendorMsg, vendorOptions);
         }
 
         session.state = "awaiting_payment";
@@ -549,7 +574,7 @@ async function handlePickupTime(
 }
 
 /** Handle order history request */
-async function handleOrderHistory(phone: string, org: Organization) {
+async function handleOrderHistory(phone: string, org: Organization, session: Session) {
     const supabase = createServiceClient();
     const { data: orders } = await supabase
         .from("orders")
@@ -574,10 +599,12 @@ async function handleOrderHistory(phone: string, org: Organization) {
         })
         .join("\n\n");
 
-    await sendButtonMessage(phone, `📦 Your Recent Orders:\n\n${orderLines}`, [
+    const options = [
         { id: "reorder", title: "🔄 Reorder Last" },
         { id: "menu", title: "📋 Browse Menu" },
-    ]);
+    ];
+    setMenuOptions(session, options);
+    await sendButtonMessage(phone, `📦 Your Recent Orders:\n\n${orderLines}`, options);
 }
 
 /** Handle reorder — repeat last order */
