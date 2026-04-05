@@ -35,14 +35,20 @@ async function greenApiRequest(method: string, payload: Record<string, unknown>)
     });
 
     if (!response.ok) {
+        const text = await response.text();
         let errorData;
-        try { errorData = await response.json(); } catch { errorData = await response.text(); }
-        const errMsg = `Green API error (${method}): ${response.status} - ${JSON.stringify(errorData)}`;
+        try { errorData = JSON.parse(text); } catch { errorData = text; }
+        const errMsg = `Green API error (${method}): ${response.status} - ${typeof errorData === 'object' ? JSON.stringify(errorData) : errorData}`;
         console.error(errMsg);
         throw new Error(errMsg);
     }
 
-    return response.json();
+    const resText = await response.text();
+    try {
+        return JSON.parse(resText);
+    } catch {
+        return resText;
+    }
 }
 
 /** Send a plain text message */
