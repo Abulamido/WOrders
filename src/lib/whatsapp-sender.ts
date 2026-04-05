@@ -6,10 +6,8 @@
  * Chat ID format: "79876543210@c.us" for personal chats
  */
 
-const GREENAPI_ID = process.env.GREENAPI_ID_INSTANCE || "";
-const GREENAPI_TOKEN = process.env.GREENAPI_API_TOKEN || "";
-
 function getBaseUrl() {
+    const GREENAPI_ID = process.env.GREENAPI_ID_INSTANCE || "";
     return `https://api.green-api.com/waInstance${GREENAPI_ID}`;
 }
 
@@ -24,7 +22,9 @@ function toChatId(phone: string): string {
 
 /** Generic Green API request helper */
 async function greenApiRequest(method: string, payload: Record<string, unknown>) {
+    const GREENAPI_TOKEN = process.env.GREENAPI_API_TOKEN || "";
     const url = `${getBaseUrl()}/${method}/${GREENAPI_TOKEN}`;
+
 
     console.log(`[GreenAPI] ${method}:`, JSON.stringify(payload));
 
