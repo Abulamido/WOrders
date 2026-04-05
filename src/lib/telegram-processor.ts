@@ -12,7 +12,7 @@ import {
 } from "./telegram-sender";
 import { createPaymentLink } from "./stripe";
 import { formatCurrency } from "./utils";
-import type { Organization, MenuItem, OrderItem } from "@/types/database";
+import { Organization, MenuItem, OrderItem } from "../types/database";
 
 // In-memory session store (Redis in Phase 2)
 interface CartItem {
@@ -25,7 +25,7 @@ interface CartItem {
     total_price: number;
 }
 
-interface Session {
+interface TelegramSession {
     orgId: string;
     state: "welcome" | "idle" | "browsing" | "category" | "item_selected" | "variant" | "cart" | "checkout_name" | "checkout_phone" | "checkout_type" | "checkout_address" | "checkout_payment" | "awaiting_payment" | "support_chat";
     selectedCategory?: string;
@@ -40,9 +40,9 @@ interface Session {
     paymentMethod?: "online" | "cash";
 }
 
-const sessions = new Map<string, Session>();
+const sessions = new Map<string, TelegramSession>();
 
-function getSession(chatId: string | number, orgId: string): Session {
+function getTelegramSession(chatId: string | number, orgId: string): TelegramSession {
     const key = `${chatId}:${orgId}`;
     if (!sessions.has(key)) {
         sessions.set(key, { orgId, state: "idle", cart: [] });
@@ -50,7 +50,7 @@ function getSession(chatId: string | number, orgId: string): Session {
     return sessions.get(key)!;
 }
 
-function getActiveSession(chatId: string | number): Session | undefined {
+function getActiveTelegramSession(chatId: string | number): TelegramSession | undefined {
     // Find the session currently engaged in checkout or support chat for this user
     for (const [key, session] of sessions.entries()) {
         if (key.startsWith(`${chatId}:`) && (session.state.startsWith("checkout_") || session.state === "support_chat")) {
@@ -121,7 +121,7 @@ export async function processTelegramUpdate(update: any) {
 
             console.log(`DEBUG: Found organization: ${organization.name} (${organization.id})`);
             
-            const session = getSession(chatId, organization.id);
+            const session = getTelegramSession(chatId, organization.id);
             session.state = "welcome";
             await handleStart(chatId, from, organization);
             return;
@@ -164,9 +164,9 @@ export async function processTelegramUpdate(update: any) {
 
         // --- EXIT SUPPORT CHAT (/done) ---
         if (text && text.trim() === "/done") {
-            const activeSession = getActiveSession(chatId);
-            if (activeSession && activeSession.state === "support_chat") {
-                activeSession.state = "idle";
+            const activeTelegramSession = getActiveTelegramSession(chatId);
+            if (activeTelegramSession && activeTelegramSession.state === "support_chat") {
+                activeTelegramSession.state = "idle";
                 await sendMessage(chatId, "✅ *Support chat ended.* You can continue ordering or request help again from your order receipt.");
             }
             return;
@@ -174,9 +174,9 @@ export async function processTelegramUpdate(update: any) {
 
         // --- CONTACT (Phone sharing) ---
         if (contact && contact.phone_number) {
-            const activeSession = getActiveSession(chatId);
-            if (activeSession && activeSession.state === "checkout_phone") {
-                await processCheckoutInput(chatId, contact.phone_number, activeSession);
+            const activeTelegramSession = getActiveTelegramSession(chatId);
+            if (activeTelegramSession && activeTelegramSession.state === "checkout_phone") {
+                await processCheckoutInput(chatId, contact.phone_number, activeTelegramSession);
                 return;
             }
         }
@@ -194,10 +194,10 @@ export async function processTelegramUpdate(update: any) {
 
         // --- TEXT INPUT STATE MACHINE ---
         if (text && !text.startsWith("/")) {
-            const activeSession = getActiveSession(chatId);
+            const activeTelegramSession = getActiveTelegramSession(chatId);
             
-            if (activeSession && activeSession.state === "support_chat") {
-                const { data: org } = await supabase.from("organizations").select("notification_telegram_id").eq("id", activeSession.orgId).single();
+            if (activeTelegramSession && activeTelegramSession.state === "support_chat") {
+                const { data: org } = await supabase.from("organizations").select("notification_telegram_id").eq("id", activeTelegramSession.orgId).single();
                 if (org && org.notification_telegram_id) {
                     await sendMessage(org.notification_telegram_id as unknown as string, `💬 *Message from Customer [ChatID: ${chatId}]*:\n${text}`);
                     await sendMessage(chatId, "✅ _Message sent to kitchen_");
@@ -205,8 +205,8 @@ export async function processTelegramUpdate(update: any) {
                 return;
             }
 
-            if (activeSession && activeSession.state.startsWith("checkout_")) {
-                await processCheckoutInput(chatId, text, activeSession);
+            if (activeTelegramSession && activeTelegramSession.state.startsWith("checkout_")) {
+                await processCheckoutInput(chatId, text, activeTelegramSession);
                 return;
             }
         }
@@ -228,9 +228,9 @@ export async function processTelegramUpdate(update: any) {
             if (["menu", "cart", "checkout", "history"].includes(action)) {
                 orgId = payload;
             } else if (["checkout_type", "checkout_payment"].includes(action)) {
-                const activeSession = getActiveSession(chatId);
-                if (!activeSession) return;
-                orgId = activeSession.orgId;
+                const activeTelegramSession = getActiveTelegramSession(chatId);
+                if (!activeTelegramSession) return;
+                orgId = activeTelegramSession.orgId;
             } else if (action === "cat") {
                 const { data: catData } = await supabase.from("categories").select("org_id").eq("id", payload).single();
                 if (!catData) throw new Error("Category not found");
@@ -251,7 +251,7 @@ export async function processTelegramUpdate(update: any) {
                 return;
             }
 
-            const session = getSession(chatId, orgId);
+            const session = getTelegramSession(chatId, orgId);
             const { data: org } = await supabase
                 .from("organizations")
                 .select("*")
@@ -380,7 +380,7 @@ async function sendCategories(chatId: number, org: Organization) {
 }
 
 /** Handle Category Selection — Shows items with photos and descriptions */
-async function handleCategorySelect(chatId: number, org: Organization, catId: string, session: Session) {
+async function handleCategorySelect(chatId: number, org: Organization, catId: string, session: TelegramSession) {
     const supabase = createServiceClient();
     // Fetch ALL items (including unavailable) to show sold-out badges
     const { data: items } = await supabase
@@ -420,7 +420,7 @@ async function handleCategorySelect(chatId: number, org: Organization, catId: st
 }
 
 /** Handle Item Selection — Add to Cart directly for MVP */
-async function handleItemSelect(chatId: number, org: Organization, itemId: string, session: Session) {
+async function handleItemSelect(chatId: number, org: Organization, itemId: string, session: TelegramSession) {
     // Guard: Store Status
     if (!org.is_open_manually) {
         await sendMessage(chatId, `❌ *Kitchen Closed*\n\n${org.name} is not accepting new orders at this time. Please check back later!`);
@@ -464,7 +464,7 @@ async function handleItemSelect(chatId: number, org: Organization, itemId: strin
 }
 
 /** Cart Summary */
-async function showCartSummary(chatId: number, org: Organization, session: Session) {
+async function showCartSummary(chatId: number, org: Organization, session: TelegramSession) {
     if (session.cart.length === 0) {
         await sendMessage(chatId, "Your cart is empty.");
         return;
@@ -486,7 +486,7 @@ async function showCartSummary(chatId: number, org: Organization, session: Sessi
 
 /** MULTI-STEP CHECKOUT FLOW */
 
-async function handleCheckoutStart(chatId: number, org: Organization, session: Session) {
+async function handleCheckoutStart(chatId: number, org: Organization, session: TelegramSession) {
     // Guard: Store Status
     if (!org.is_open_manually) {
         await sendMessage(chatId, `❌ *Checkout Disabled*\n\n${org.name} is currently closed. We cannot process your order right now.`);
@@ -498,17 +498,11 @@ async function handleCheckoutStart(chatId: number, org: Organization, session: S
         return;
     }
 
-    // Guard: Store must be open to proceed to checkout
-    if (org.is_open_manually === false) {
-        await sendMessage(chatId, "⚠️ *Sorry, we are currently closed.*\n\nPlease come back when we are open to place your order. Your cart has been saved!");
-        return;
-    }
-
     session.state = "checkout_name";
     await sendMessage(chatId, "📝 Let's get your order ready!\n\nPlease reply with your *Full Name*.");
 }
 
-async function processCheckoutInput(chatId: number, input: string, session: Session) {
+async function processCheckoutInput(chatId: number, input: string, session: TelegramSession) {
     const supabase = createServiceClient();
     const { data: org } = await supabase.from("organizations").select("*").eq("id", session.orgId).single();
     if (!org) return;
@@ -551,7 +545,7 @@ async function processCheckoutInput(chatId: number, input: string, session: Sess
     }
 }
 
-async function advanceCheckoutState(chatId: number, org: Organization, session: Session) {
+async function advanceCheckoutState(chatId: number, org: Organization, session: TelegramSession) {
     if (session.state === "checkout_type") {
         if (session.orderType === "delivery") {
             session.state = "checkout_address";
@@ -569,7 +563,7 @@ async function advanceCheckoutState(chatId: number, org: Organization, session: 
     }
 }
 
-async function finalizeOrder(chatId: number, org: Organization, session: Session) {
+async function finalizeOrder(chatId: number, org: Organization, session: TelegramSession) {
     const supabase = createServiceClient();
     
     const { data: customer } = await supabase

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
     Clock,
@@ -49,8 +49,6 @@ const columns: { status: OrderStatus; label: string; icon: React.ElementType; co
     { status: "completed", label: "Completed", icon: CheckCircle2, color: "text-gray-400", bgColor: "bg-gray-500/10 border-gray-500/20" },
 ];
 
-// Demo orders removed — dashboard now shows real Supabase data only
-
 export default function OrdersDashboard() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [orgId, setOrgId] = useState<string | null>(null);
@@ -58,14 +56,10 @@ export default function OrdersDashboard() {
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(false);
-    const prevOrderIds = useRef<Set<string>>(new Set());
-    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const trackedOrderIds = useRef<Set<string>>(new Set());
 
-    // Initialize audio on first user interaction
+    // Enable sound interaction for future use (Audio currently hidden from TS due to SSR issues)
     useEffect(() => {
-        audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
-        audioRef.current.volume = 0.5;
-        
         const enableSound = () => {
             setSoundEnabled(true);
             window.removeEventListener("click", enableSound);
@@ -99,20 +93,20 @@ export default function OrdersDashboard() {
                 const data = await res.json();
                 const fetchedOrders = data.orders || [];
                 
-                // Detect new pending orders for sound alert
-                if (prevOrderIds.current.size > 0 && fetchedOrders.length > 0) {
+                // Detect new pending orders for sound alert logic
+                if (trackedOrderIds.current.size > 0 && fetchedOrders.length > 0) {
                     const hasNewPending = fetchedOrders.some((o: Order) => 
-                        o.status === "pending" && !prevOrderIds.current.has(o.id)
+                        o.status === "pending" && !trackedOrderIds.current.has(o.id)
                     );
                     
-                    if (hasNewPending && soundEnabled && audioRef.current) {
-                        audioRef.current.play().catch(e => console.warn("Audio blocked:", e));
+                    if (hasNewPending && soundEnabled) {
+                        console.log("New order detected!");
                     }
                 }
 
-                // Update seen order IDs
-                const newIds = new Set(fetchedOrders.map((o: Order) => o.id));
-                prevOrderIds.current = newIds;
+                // Update tracked order IDs
+                const newIds = new Set<string>(fetchedOrders.map((o: Order) => o.id));
+                trackedOrderIds.current = newIds;
                 
                 setOrders(fetchedOrders);
             }
@@ -122,7 +116,7 @@ export default function OrdersDashboard() {
             if (isManualRefresh) setRefreshing(false);
             setLoading(false);
         }
-    }, [orgId]);
+    }, [orgId, soundEnabled]);
 
     // Initial fetch and polling
     useEffect(() => {
@@ -258,7 +252,6 @@ export default function OrdersDashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* Stats pills */}
                     <div className="hidden lg:flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-2">
                         <div className="flex flex-col">
                             <span className="text-[10px] uppercase font-bold text-gray-500 leading-none mb-1">Gross Sales</span>
@@ -294,7 +287,6 @@ export default function OrdersDashboard() {
                         />
                     </button>
 
-                    {/* Connect Telegram Button */}
                     {orgId && (
                         <div className="flex items-center gap-2">
                             <button
@@ -333,7 +325,6 @@ export default function OrdersDashboard() {
 
                     return (
                         <div key={col.status} className="space-y-3">
-                            {/* Column header */}
                             <div
                                 className={cn(
                                     "flex items-center gap-2 px-4 py-2.5 rounded-xl border",
@@ -355,14 +346,12 @@ export default function OrdersDashboard() {
                                 </span>
                             </div>
 
-                            {/* Order cards */}
                             <div className="space-y-3">
                                 {colOrders.map((order) => (
                                     <div
                                         key={order.id}
                                         className="bg-[#141420] border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all duration-200 hover:shadow-lg hover:shadow-black/20"
                                     >
-                                        {/* Order header */}
                                         <div className="flex items-center justify-between mb-3">
                                             <Link href={`/dashboard/orders/${order.id}`} className="font-mono text-sm font-bold text-white/80 hover:text-emerald-400 transition-colors">
                                                 {shortOrderId(order.id)}
@@ -372,7 +361,6 @@ export default function OrdersDashboard() {
                                             </span>
                                         </div>
 
-                                        {/* Customer */}
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-[10px] font-bold">
                                                 {(order.customer_name || "?")[0]}
@@ -382,7 +370,6 @@ export default function OrdersDashboard() {
                                             </span>
                                         </div>
 
-                                        {/* Items */}
                                         <div className="space-y-1 mb-3">
                                             {order.items_json.map((item, i) => (
                                                 <div
@@ -404,7 +391,6 @@ export default function OrdersDashboard() {
                                             ))}
                                         </div>
 
-                                        {/* Total + Pickup */}
                                         <div className="flex items-center justify-between pt-3 border-t border-white/5">
                                             <span className="font-bold text-sm">
                                                 {formatCurrency(order.total_amount)}
@@ -420,7 +406,6 @@ export default function OrdersDashboard() {
                                             )}
                                         </div>
 
-                                        {/* Action button */}
                                         {nextStatusMap[order.status] && (
                                             <button
                                                 onClick={() =>
