@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
 import { stripe as defaultStripe } from "@/lib/stripe";
 import { sendMessage } from "@/lib/telegram-sender";
+import { sendTextMessage } from "@/lib/whatsapp-sender";
 import Stripe from "stripe";
 
 /**
@@ -75,19 +76,36 @@ export async function POST(req: NextRequest) {
                         .single();
 
                     if (order) {
-                        const chatId = order.telegram_chat_id;
-                        // Notify customer
-                        if (chatId) {
-                            const customerMsg = `✅ *Payment received!* Your order from *${order.organizations?.name}* is confirmed.\n\n📋 Order #${orderId.slice(0, 8).toUpperCase()}\n⏰ Estimated pickup: ${order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "Soon"}\n\nWe'll notify you when it's ready! 🎉`;
-                            await sendMessage(chatId as unknown as string, customerMsg).catch(console.error);
+                        const orgName = order.organizations?.name || "the restaurant";
+                        const shortId = order.id.slice(0, 8).toUpperCase();
+                        const telegramChatId = order.telegram_chat_id;
+                        const customerPhone = order.customer_phone;
+
+                        const orderDetails = `
+📋 Order #${shortId}
+Type: ${order.order_type === 'delivery' ? '🚚 Delivery' : '🚶 Pick Up'}
+${order.delivery_address ? `📍 Address: ${order.delivery_address}\n` : ""}Payment: 💳 Online (Paid)
+`.trim();
+
+                        // --- Notify Customer ---
+                        const customerMsgFull = `✅ *Payment received!* Your order from *${orgName}* is confirmed.\n\n${orderDetails}\n\nWe'll notify you when it's ready! 🎉`;
+                        
+                        if (telegramChatId) {
+                            await sendMessage(telegramChatId as unknown as string, customerMsgFull).catch(console.error);
+                        } else if (customerPhone) {
+                            await sendTextMessage(customerPhone, customerMsgFull).catch(console.error);
                         }
 
-                        // Notify Vendor (using org.notification_telegram_id)
-                        if (order.organizations?.notification_telegram_id) {
-                            const vendorChatId = order.organizations.notification_telegram_id;
-                            const vendorMsg = `🔔 *New Order Paid!* (#${orderId.slice(0, 8).toUpperCase()})\n\n⏰ Pickup: ${order.pickup_time ? new Date(order.pickup_time).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "Soon"}\n💰 Total: $${(order.total_amount || 0).toFixed(2)}\n\nCheck your dashboard for details.`;
+                        // --- Notify Vendor ---
+                        const vendorMsgFull = `💰 *New Order Paid!* (#${shortId})\n\n${orderDetails}\n\nCheck your dashboard/chat to manage.`;
 
-                            await sendMessage(vendorChatId as unknown as string, vendorMsg).catch(console.error);
+                        // Telegram Vendor Notify
+                        if (order.organizations?.notification_telegram_id) {
+                            await sendMessage(order.organizations.notification_telegram_id as unknown as string, vendorMsgFull).catch(console.error);
+                        }
+                        // WhatsApp Vendor Notify
+                        if (order.organizations?.notification_phone) {
+                            await sendTextMessage(order.organizations.notification_phone, vendorMsgFull).catch(console.error);
                         }
 
                         // Update customer stats

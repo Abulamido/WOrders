@@ -20,7 +20,7 @@ import { createPaymentLink } from "./stripe";
 import { formatCurrency } from "./utils";
 import type { Organization, MenuItem, OrderItem } from "@/types/database";
 
-// In-memory session store (Redis in Phase 2)
+// Database-backed session persistence via 'user_carts' table
 interface CartItem {
     item_id: string;
     name: string;
@@ -32,34 +32,108 @@ interface CartItem {
 }
 
 interface Session {
+    phone: string;
     orgId: string;
-    state: "idle" | "browsing" | "category" | "item_selected" | "variant" | "modifiers" | "cart" 
-           | "checkout_name" | "checkout_type" | "checkout_address" | "checkout_payment" | "checkout_complete" | "awaiting_payment";
-    selectedCategory?: string;
-    selectedItem?: MenuItem;
-    selectedVariant?: string;
-    selectedModifiers?: string[];
+    state: string;
     cart: CartItem[];
     customerName?: string;
-    orderType?: "pickup" | "delivery";
+    orderType?: string;
     deliveryAddress?: string;
-    paymentMethod?: "online" | "cash";
-    // Numbered menu mapping: maps "1","2","3" → action IDs like "cat_abc", "item_xyz"
+    paymentMethod?: string;
+    selectedCategory?: string;
+    selectedItemId?: string;
+    selectedVariantName?: string;
+    selectedModifiers?: string[];
     lastMenuOptions?: { id: string; title: string }[];
 }
 
-const sessions = new Map<string, Session>();
+/**
+ * Fetch or create a session in Supabase.
+ */
+async function getSession(phone: string, orgId: string): Promise<Session> {
+    const supabase = createServiceClient();
+    const { data: cart } = await supabase
+        .from("user_carts")
+        .select("*")
+        .eq("phone", phone)
+        .eq("org_id", orgId)
+        .single();
 
-function getSession(phone: string, orgId: string): Session {
-    const key = `${phone}:${orgId}`;
-    if (!sessions.has(key)) {
-        sessions.set(key, { orgId, state: "idle", cart: [] });
+    if (cart) {
+        return {
+            phone,
+            orgId,
+            state: cart.state || "idle",
+            cart: (cart.cart as CartItem[]) || [],
+            customerName: cart.customer_name,
+            orderType: cart.order_type,
+            deliveryAddress: cart.delivery_address,
+            paymentMethod: cart.payment_method,
+            selectedCategory: cart.selected_category,
+            selectedItemId: cart.selected_item_id,
+            selectedVariantName: cart.selected_variant_name,
+            selectedModifiers: cart.selected_modifiers,
+            lastMenuOptions: (cart.last_menu_options as any[]) || [],
+        };
     }
-    return sessions.get(key)!;
+
+    // Default session if not found
+    return { phone, orgId, state: "idle", cart: [] };
+}
+
+/**
+ * Persist session to Supabase.
+ */
+async function saveSession(session: Session) {
+    const supabase = createServiceClient();
+    await supabase.from("user_carts").upsert({
+        phone: session.phone,
+        org_id: session.orgId,
+        state: session.state,
+        cart: session.cart as any,
+        customer_name: session.customerName,
+        order_type: session.orderType,
+        delivery_address: session.deliveryAddress,
+        payment_method: session.paymentMethod,
+        selected_category: session.selectedCategory,
+        selected_item_id: session.selectedItemId,
+        selected_variant_name: session.selectedVariantName,
+        selected_modifiers: session.selectedModifiers,
+        last_menu_options: session.lastMenuOptions as any,
+        last_interaction: new Date().toISOString()
+    });
 }
 
 function clearSession(phone: string, orgId: string) {
-    sessions.delete(`${phone}:${orgId}`);
+    const supabase = createServiceClient();
+    // We don't delete to keep history/lastInteraction, just reset state
+    supabase.from("user_carts").update({
+        state: "idle",
+        cart: [],
+        customer_name: null,
+        order_type: null,
+        delivery_address: null,
+        payment_method: null,
+        selected_category: null,
+        selected_item_id: null,
+        selected_variant_name: null,
+        selected_modifiers: null,
+        last_menu_options: []
+    }).eq("phone", phone).eq("org_id", orgId);
+}
+
+/**
+ * Log an outgoing message sent to a user/vendor.
+ */
+async function logOutgoingMessage(orgId: string, phone: string, text: string, type: string = "text") {
+    const supabase = createServiceClient();
+    await supabase.from("whatsapp_logs").insert({
+        org_id: orgId,
+        phone,
+        direction: "outgoing",
+        payload: { text, type } as any,
+        status: "sent"
+    });
 }
 
 /**
@@ -142,7 +216,7 @@ export async function processMessage(
         status: "received",
     });
 
-    const session = getSession(from, org.id);
+    const session = await getSession(from, org.id);
 
     // Extract user input
     let userInput = "";
@@ -161,6 +235,14 @@ export async function processMessage(
 
     // Route based on state + input
     try {
+        // RESET command for testing/debugging
+        if (userInput === "reset") {
+            await clearSession(from, org.id);
+            await sendTextMessage(from, "Session cleared. Type 'Hi' to start over.");
+            await logOutgoingMessage(org.id, from, "Session cleared.");
+            return;
+        }
+
         // --- Vendor text commands: ACCEPT / REJECT / READY / DONE <orderId> ---
         const vendorCmd = userInput.match(/^(accept|reject|ready|done)\s+([a-f0-9-]+)/i);
         if (vendorCmd) {
@@ -190,6 +272,7 @@ export async function processMessage(
         } else if (resolvedInput.startsWith("cat_")) {
             await handleCategorySelect(from, org, resolvedInput, session);
         } else if (resolvedInput.startsWith("item_") || resolvedInput.startsWith("soldout_") || session.state === "category") {
+            if (resolvedInput.startsWith("item_")) session.selectedItemId = resolvedInput.replace("item_", "");
             await handleItemSelect(from, org, resolvedInput, session);
         } else if (resolvedInput.startsWith("var_") || session.state === "variant") {
             await handleVariantSelect(from, org, resolvedInput, session);
@@ -199,8 +282,7 @@ export async function processMessage(
             session.state = "browsing";
             await sendCategories(from, org, session);
         } else if (session.state.startsWith("checkout_")) {
-            await processCheckoutInput(from, org, userInput, session); // pass the raw userInput so we can get exactly what they typed
-
+            await processCheckoutInput(from, org, userInput, session); 
         } else if (resolvedInput === "history") {
             await handleOrderHistory(from, org, session);
         } else if (resolvedInput === "reorder") {
@@ -211,14 +293,19 @@ export async function processMessage(
                 { id: "history", title: "📦 My Orders" },
             ];
             setMenuOptions(session, options);
-            await sendButtonMessage(from, `I didn't understand that. What would you like to do?`, options);
+            const msg = `I didn't understand that. What would you like to do?`;
+            await sendButtonMessage(from, msg, options);
+            await logOutgoingMessage(org.id, from, msg);
         }
+
+        // AUTO-SAVE SESSION AFTER EVERY TURN
+        await saveSession(session);
+
     } catch (error) {
         console.error("Message processing error:", error);
-        await sendTextMessage(
-            from,
-            "Sorry, something went wrong. Please try again or type 'Hi' to start over."
-        );
+        const errorMsg = "Sorry, something went wrong. Please try again or type 'Hi' to start over.";
+        await sendTextMessage(from, errorMsg);
+        await logOutgoingMessage(org.id, from, errorMsg);
     }
 }
 
@@ -339,7 +426,7 @@ async function handleItemSelect(
         return;
     }
 
-    const itemId = input.replace("item_", "");
+    const itemId = session.selectedItemId!;
 
     const supabase = createServiceClient();
     const { data: item } = await supabase
@@ -358,7 +445,7 @@ async function handleItemSelect(
         return;
     }
 
-    session.selectedItem = item;
+    session.selectedItemId = itemId;
 
     // Send product image if available
     if (item.image_url) {
@@ -402,15 +489,32 @@ async function handleVariantSelect(
     session: Session
 ) {
     const variantName = input.replace("var_", "");
-    const item = session.selectedItem!;
-    const variant = (item.variants as { name: string; price: number }[])?.find(
+    const item = session.selectedItemId;
+    if (!item) {
+        await sendTextMessage(phone, "No item selected. Please try again.");
+        return;
+    }
+
+    const supabase = createServiceClient();
+    const { data: menuItem } = await supabase
+        .from("menu_items")
+        .select("*")
+        .eq("id", item)
+        .single();
+
+    if (!menuItem) {
+        await sendTextMessage(phone, "Item not found. Please try again.");
+        return;
+    }
+
+    const variant = (menuItem.variants as { name: string; price: number }[])?.find(
         (v) => v.name === variantName
     );
 
-    const price = variant?.price || item.price;
+    const price = variant?.price || menuItem.price;
     const cartItem: CartItem = {
-        item_id: item.id,
-        name: item.name,
+        item_id: menuItem.id,
+        name: menuItem.name,
         variant: variantName,
         quantity: 1,
         unit_price: price,
@@ -613,9 +717,11 @@ async function finalizeOrder(phone: string, org: Organization, session: Session)
     const summaryText = `📋 Order Summary:\n${session.cart.map((i) => `  ${i.quantity}x ${i.name}${i.variant ? ` (${i.variant})` : ""} — ${formatCurrency(i.total_price)}`).join("\n")}\n\nSubtotal: ${formatCurrency(subtotal)}\nTax: ${formatCurrency(taxAmount)}\n${deliveryFee > 0 ? `Delivery: ${formatCurrency(deliveryFee)}\n` : ""}💰 Total: ${formatCurrency(totalAmount)}\nType: ${session.orderType === 'delivery' ? '🚚 Delivery' : '🚶 Pick Up'}\nPayment: ${session.paymentMethod === 'online' ? '💳 Online' : '💵 Cash'}`;
 
     // --- Notify Vendor ---
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://cafeteriaflow.com"}/dashboard`;
+
     if (org.notification_phone) {
         const shortId = order.id.slice(0, 8);
-        const vendorMsg = `🔔 *New Order!* (#${shortId})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})\n\n--- Reply to manage ---\n✅ Type: ACCEPT ${order.id}\n❌ Type: REJECT ${order.id}`;
+        const vendorMsg = `🔔 *New Order!* (#${shortId})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})\n\n--- Manage Order ---\n🔗 Dashboard: ${dashboardUrl}\n\n✅ Type: *ACCEPT ${order.id}*\n❌ Type: *REJECT ${order.id}*`;
         await sendTextMessage(org.notification_phone, vendorMsg);
     }
 
@@ -701,7 +807,7 @@ async function handleReorder(phone: string, org: Organization) {
     }
 
     // Re-populate cart from last order
-    const session = getSession(phone, org.id);
+    const session = await getSession(phone, org.id);
     session.cart = (lastOrder.items_json as OrderItem[]).map((item) => ({
         item_id: item.item_id,
         name: item.name,
@@ -711,7 +817,8 @@ async function handleReorder(phone: string, org: Organization) {
         unit_price: item.unit_price,
         total_price: item.total_price,
     }));
-
+    
+    await saveSession(session);
     await showCartSummary(phone, session);
 }
 

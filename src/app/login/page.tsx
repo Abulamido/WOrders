@@ -13,8 +13,9 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [phone, setPhone] = useState("");
     const [otpCode, setOtpCode] = useState("");
-    const [step, setStep] = useState(1); // 1: Number, 1.5: Select, 2: Code
+    const [step, setStep] = useState(1); // 1: Number, 1.5: Select, 1.7: Method, 2: Code
     const [availableOrgs, setAvailableOrgs] = useState<any[]>([]);
+    const [availableMethods, setAvailableMethods] = useState<string[]>([]);
     const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
 
     const handleSendOTP = async (e?: React.FormEvent, selectedOrgId?: string) => {
@@ -26,7 +27,7 @@ export default function LoginPage() {
             const res = await fetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone, orgId: selectedOrgId }),
+                body: JSON.stringify({ phone, orgId: selectedOrgId, method: (typeof e === 'string') ? e : undefined }),
             });
 
             const data = await res.json();
@@ -35,6 +36,10 @@ export default function LoginPage() {
                 if (data.requireSelection) {
                     setAvailableOrgs(data.organizations);
                     setStep(1.5);
+                } else if (data.requireMethodSelection) {
+                    setAvailableMethods(data.availableMethods);
+                    setStep(1.7);
+                    if (selectedOrgId) setSelectedOrgId(selectedOrgId);
                 } else {
                     setStep(2);
                 }
@@ -159,6 +164,51 @@ export default function LoginPage() {
                             ))}
                         </div>
                     </div>
+                ) : step === 1.7 ? (
+                    <div className="animate-in slide-in-from-right-4 fade-in duration-300">
+                        <button
+                            onClick={() => setStep(selectedOrgId && availableOrgs.length > 1 ? 1.5 : 1)}
+                            className="flex items-center gap-2 text-sm text-gray-500 hover:text-white mb-6 transition-colors"
+                        >
+                            <ArrowLeft size={16} /> Back
+                        </button>
+
+                        <div className="text-center mb-8">
+                            <h1 className="text-2xl font-bold mb-3">Login Method</h1>
+                            <p className="text-gray-400">Where should we send your code?</p>
+                        </div>
+
+                        <div className="space-y-3">
+                            {availableMethods.includes("telegram") && (
+                                <button
+                                    onClick={() => handleSendOTP("telegram" as any)}
+                                    className="w-full flex items-center justify-between p-5 bg-[#141420] hover:bg-[#1a1a2a] border border-white/10 rounded-2xl transition-all group"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                                        </div>
+                                        <span className="font-bold text-white group-hover:text-blue-400 transition-colors text-lg">Telegram</span>
+                                    </div>
+                                    <ChevronRight className="text-gray-600 group-hover:text-blue-400 transition-colors" size={20} />
+                                </button>
+                            )}
+                            {availableMethods.includes("whatsapp") && (
+                                <button
+                                    onClick={() => handleSendOTP("whatsapp" as any)}
+                                    className="w-full flex items-center justify-between p-5 bg-[#141420] hover:bg-[#1a1a2a] border border-white/10 rounded-2xl transition-all group"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover:scale-110 transition-transform">
+                                            <Phone size={20} />
+                                        </div>
+                                        <span className="font-bold text-white group-hover:text-emerald-400 transition-colors text-lg">WhatsApp</span>
+                                    </div>
+                                    <ChevronRight className="text-gray-600 group-hover:text-emerald-400 transition-colors" size={20} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 ) : (
                     <div className="animate-in slide-in-from-right-4 fade-in duration-300">
                         <button
@@ -170,7 +220,7 @@ export default function LoginPage() {
 
                         <div className="text-center mb-10">
                             <h1 className="text-3xl font-bold mb-3">Verify it&apos;s you</h1>
-                            <p className="text-gray-400">Enter the 4-digit code we just sent to your Telegram.</p>
+                            <p className="text-gray-400">Enter the 4-digit code we just sent to your WhatsApp or Telegram.</p>
                         </div>
 
                         <form onSubmit={handleVerify} className="space-y-5">

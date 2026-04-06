@@ -36,9 +36,9 @@ interface Order {
     total_amount: number;
     status: OrderStatus;
     payment_status: string;
-    pickup_time: string | null;
     order_type: string;
     delivery_address: string | null;
+    payment_method: string;
     created_at: string;
 }
 
@@ -391,18 +391,32 @@ export default function OrdersDashboard() {
                                             ))}
                                         </div>
 
-                                        <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                                            <span className="font-bold text-sm">
-                                                {formatCurrency(order.total_amount)}
-                                            </span>
-                                            {order.pickup_time && (
-                                                <span className="text-xs text-gray-500 flex items-center gap-1">
-                                                    <Clock size={10} />
-                                                    {new Date(order.pickup_time).toLocaleTimeString(
-                                                        "en-US",
-                                                        { hour: "numeric", minute: "2-digit" }
-                                                    )}
+                                        <div className="flex flex-col pt-3 border-t border-white/5 gap-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="font-bold text-sm">
+                                                    {formatCurrency(order.total_amount)}
                                                 </span>
+                                                <div className="flex items-center gap-1">
+                                                    <span className={cn(
+                                                        "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
+                                                        order.order_type === 'delivery' ? "bg-amber-500/10 text-amber-500" : "bg-blue-500/10 text-blue-500"
+                                                    )}>
+                                                        {order.order_type === 'delivery' ? '🚚 Delivery' : '🚶 Pick Up'}
+                                                    </span>
+                                                    <span className={cn(
+                                                        "text-[10px] px-1.5 py-0.5 rounded-md font-bold uppercase",
+                                                        order.payment_method === 'online' ? "bg-emerald-500/10 text-emerald-500" : "bg-gray-500/10 text-gray-500"
+                                                    )}>
+                                                        {order.payment_method === 'online' ? '💳 Online' : '💵 Cash'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            
+                                            {order.order_type === 'delivery' && order.delivery_address && (
+                                                <div className="flex items-start gap-1.5 text-[11px] text-gray-400 bg-black/20 p-2 rounded-lg">
+                                                    <Package size={10} className="mt-0.5 shrink-0" />
+                                                    <span className="line-clamp-2">{order.delivery_address}</span>
+                                                </div>
                                             )}
                                         </div>
 

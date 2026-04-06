@@ -141,6 +141,18 @@ export async function POST(req: NextRequest) {
         const instanceWid = body.instanceData?.wid || "";
         const businessNumber = fromChatId(instanceWid);
 
+        // Idempotency: skip if we've seen this message ID in the last 60 seconds
+        const { data: existingLog } = await supabase
+            .from("whatsapp_logs")
+            .select("id")
+            .eq("payload->>idMessage", body.idMessage)
+            .maybeSingle();
+
+        if (existingLog) {
+            console.log("Duplicate message ID ignored:", body.idMessage);
+            return NextResponse.json({ success: true, duplicate: true });
+        }
+
         await processMessage(translatedMessage, {
             display_phone_number: businessNumber,
         });

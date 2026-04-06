@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { sendTextMessage as sendWhatsAppMessage } from "@/lib/whatsapp-sender";
 
 const OTP_CONFIG = {
     length: 4,
@@ -11,7 +12,7 @@ const OTP_CONFIG = {
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
     try {
-        const { phone: rawPhone, orgId } = await req.json();
+        const { phone: rawPhone, orgId, method } = await req.json();
 
         if (!rawPhone) {
             return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
         // 1. Verify organization exists (fetch ALL matching)
         const { data: orgs, error: orgError } = await supabase
             .from("organizations")
-            .select("id, name, slug, notification_telegram_id, agency_id")
+            .select("id, name, slug, notification_telegram_id, notification_phone, whatsapp_number, agency_id")
             .or(`whatsapp_number.eq.${phone},notification_phone.eq.${phone},whatsapp_number.eq.${phoneWithPlus},notification_phone.eq.${phoneWithPlus}`)
             .eq("is_active", true);
 
@@ -46,13 +47,28 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Selected organization not found" }, { status: 404 });
         }
 
-        if (!org.notification_telegram_id) {
+        // 2. Identify available methods
+        const methods: string[] = [];
+        if (org.notification_telegram_id) methods.push("telegram");
+        if (org.notification_phone || org.whatsapp_number) methods.push("whatsapp");
+
+        if (methods.length === 0) {
             return NextResponse.json({ 
-                error: "Your Telegram account is not linked. Please connect your Telegram in the Admin panel first." 
+                error: "Your account is not linked to Telegram or WhatsApp. Please contact support to link your notification number." 
             }, { status: 403 });
         }
 
-        // 2. Check if currently locked out
+        // If multiple methods and NO method parameter provided, require selection
+        if (methods.length > 1 && !method) {
+            return NextResponse.json({ 
+                requireMethodSelection: true, 
+                availableMethods: methods 
+            }, { status: 200 });
+        }
+
+        const chosenMethod = method || methods[0];
+
+        // 3. Check if currently locked out
         const { data: existingOtp } = await supabase
             .from("vendor_otps")
             .select("locked_until")
@@ -101,13 +117,20 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        // 5. Send OTP via Telegram
+        // 5. Send OTP via chosen channel
         const otpMessage = `${brandIcon} *${brandName} Login Code*: ${otpCode}\n\nUse this code to access your vendor dashboard. It expires in ${OTP_CONFIG.expiresInMinutes} minutes.`;
 
-        const { sendMessage } = await import("@/lib/telegram-sender");
-        await sendMessage(org.notification_telegram_id, otpMessage, { botToken });
+        if (chosenMethod === "telegram" && org.notification_telegram_id) {
+            const { sendMessage: sendTelegramMessage } = await import("@/lib/telegram-sender");
+            await sendTelegramMessage(org.notification_telegram_id, otpMessage, { botToken });
+        } else if (chosenMethod === "whatsapp") {
+            const targetPhone = org.notification_phone || org.whatsapp_number;
+            await sendWhatsAppMessage(targetPhone!, otpMessage);
+        } else {
+            return NextResponse.json({ error: "Invalid method or insufficient account linkage." }, { status: 400 });
+        }
 
-        return NextResponse.json({ success: true, message: "OTP sent to your Telegram" });
+        return NextResponse.json({ success: true, message: `OTP sent to your ${chosenMethod === "telegram" ? "Telegram" : "WhatsApp"}` });
     } catch (e: any) {
         console.error("Login error:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });
