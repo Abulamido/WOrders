@@ -47,6 +47,7 @@ const colorMap: Record<string, { bg: string; text: string; border: string; gradi
 export default function AnalyticsDashboard() {
     const [period, setPeriod] = useState<"today" | "week" | "month">("today");
     const [loading, setLoading] = useState(true);
+    const [copied, setCopied] = useState(false);
     const [sending, setSending] = useState(false);
     const [sent, setSent] = useState(false);
     const [data, setData] = useState<{
@@ -170,6 +171,15 @@ export default function AnalyticsDashboard() {
             setLoading(false);
         }
     }, [period]);
+
+    const handleCopyLink = () => {
+        const orgName = localStorage.getItem("cafeteriaflow_org_name") || "your kitchen";
+        const orgPhone = (localStorage.getItem("cafeteriaflow_org_phone") || "+1234567890").replace(/\D/g, "");
+        const link = `https://wa.me/${orgPhone}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(orgName)}`;
+        navigator.clipboard.writeText(link);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     useEffect(() => {
         const orgId = localStorage.getItem("cafeteriaflow_org_id");

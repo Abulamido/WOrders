@@ -13,7 +13,11 @@ import {
     Send,
     AlertTriangle,
     ExternalLink,
-    Power
+    Power,
+    QrCode,
+    Copy,
+    Share2,
+    Check
 } from "lucide-react";
 import { cn, formatCurrency, formatRelativeTime, shortOrderId } from "@/lib/utils";
 
@@ -56,6 +60,7 @@ export default function OrdersDashboard() {
     const [refreshing, setRefreshing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(false);
+    const [copied, setCopied] = useState(false);
     const trackedOrderIds = useRef<Set<string>>(new Set());
 
     // Enable sound interaction for future use (Audio currently hidden from TS due to SSR issues)
@@ -153,6 +158,12 @@ export default function OrdersDashboard() {
         },
         [orgId, fetchOrders]
     );
+    
+    const handleCopyLink = (link: string) => {
+        navigator.clipboard.writeText(link);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
     const toggleStoreStatus = async () => {
         if (!orgId || !organization) return;
@@ -316,6 +327,109 @@ export default function OrdersDashboard() {
                     )}
                 </div>
             </div>
+
+            {/* Sharing & Customer Links */}
+            {organization && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+                    <div className="lg:col-span-2 bg-[#141420] border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Share2 size={120} />
+                        </div>
+                        
+                        <div className="relative z-10">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                                <Share2 className="text-emerald-400" size={20} />
+                                Share your Menu
+                            </h3>
+                            <p className="text-gray-400 text-sm mb-6 max-w-md">
+                                Customers can order from you directly via WhatsApp or Telegram. 
+                                Share your unique links on social media or print the QR code for your counter.
+                            </p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* WhatsApp Connection */}
+                                <div className="bg-black/30 border border-emerald-500/10 rounded-2xl p-5 hover:border-emerald-500/30 transition-all">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                                            <Phone size={16} />
+                                        </div>
+                                        <span className="font-bold text-sm">WhatsApp Ordering</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 mb-3">
+                                        Customers message your WhatsApp to start ordering.
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleCopyLink(`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(organization.name)}`)}
+                                            className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg transition-all"
+                                        >
+                                            {copied ? <Check size={14} /> : <Copy size={14} />}
+                                            {copied ? "Copied!" : "Copy Link"}
+                                        </button>
+                                        <a
+                                            href={`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(organization.name)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg transition-all"
+                                        >
+                                            <ExternalLink size={14} />
+                                        </a>
+                                    </div>
+                                </div>
+
+                                {/* Telegram Connection */}
+                                <div className="bg-black/30 border border-blue-500/10 rounded-2xl p-5 hover:border-blue-500/30 transition-all">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                                        </div>
+                                        <span className="font-bold text-sm">Telegram Bot</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 mb-3">
+                                        Secure, fast ordering via the Telegram bot.
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => handleCopyLink(`https://t.me/Cafteriaflow_bot?start=${organization.slug}`)}
+                                            className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs font-bold rounded-lg transition-all"
+                                        >
+                                            <Copy size={14} />
+                                            Copy Link
+                                        </button>
+                                        <a
+                                            href={`https://t.me/Cafteriaflow_bot?start=${organization.slug}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg transition-all"
+                                        >
+                                            <ExternalLink size={14} />
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-[#141420] border border-white/5 rounded-2xl p-6 text-center flex flex-col justify-center items-center">
+                        <div className="flex items-center gap-2 mb-4 text-gray-400">
+                            <QrCode size={18} />
+                            <span className="text-sm font-semibold uppercase tracking-wider">WhatsApp QR Code</span>
+                        </div>
+                        <div className="bg-white p-3 rounded-2xl mb-4 shadow-2xl shadow-emerald-500/10">
+                            <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(organization.name)}`)}&bgcolor=ffffff&color=000000`}
+                                alt="WhatsApp QR Code"
+                                width={160}
+                                height={160}
+                                className="block"
+                            />
+                        </div>
+                        <p className="text-[10px] text-gray-500 leading-tight px-4 font-medium uppercase tracking-tighter">
+                            Print this QR and place it on your counter or tables for instant ordering.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {/* Kanban Board */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

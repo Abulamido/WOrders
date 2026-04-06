@@ -310,21 +310,49 @@ export default function OnboardingFlow() {
                             <p className="text-gray-400">Share this link with your customers to start receiving orders.</p>
                         </div>
 
-                        {/* Telegram Ordering Link */}
+                        {/* WhatsApp Ordering Link */}
                         <div className="bg-[#141420] border border-emerald-500/20 rounded-2xl p-6">
                             <div className="flex items-center gap-2 mb-4">
                                 <span className="text-xl">📱</span>
-                                <h2 className="font-bold text-lg">Your Ordering Link</h2>
+                                <h2 className="font-bold text-lg">WhatsApp Ordering Link</h2>
                             </div>
 
                             <div className="bg-black/40 border border-white/10 rounded-xl p-4 mb-4">
-                                <code className="text-sm text-emerald-400 break-all">{telegramLink}</code>
+                                <code className="text-sm text-emerald-400 break-all">
+                                    https://wa.me/{formData.contact_phone.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(formData.name)}
+                                </code>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(`https://wa.me/${formData.contact_phone.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(formData.name)}`);
+                                        setCopied(true);
+                                        setTimeout(() => setCopied(false), 2000);
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold text-sm rounded-xl hover:bg-emerald-500/20 transition-all"
+                                >
+                                    <Copy size={16} />
+                                    {copied ? "Copied!" : "Copy Link"}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Telegram Ordering Link */}
+                        <div className="bg-[#141420] border border-blue-500/20 rounded-2xl p-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="text-xl">💬</span>
+                                <h2 className="font-bold text-lg">Telegram Bot Link</h2>
+                            </div>
+
+                            <div className="bg-black/40 border border-white/10 rounded-xl p-4 mb-4">
+                                <code className="text-sm text-blue-400 break-all">{telegramLink}</code>
                             </div>
 
                             <div className="flex gap-3">
                                 <button
                                     onClick={handleCopyLink}
-                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-semibold text-sm rounded-xl hover:bg-emerald-500/20 transition-all"
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 font-semibold text-sm rounded-xl hover:bg-blue-500/20 transition-all"
                                 >
                                     <Copy size={16} />
                                     {copied ? "Copied!" : "Copy Link"}
@@ -341,25 +369,41 @@ export default function OnboardingFlow() {
                             </div>
                         </div>
 
-                        {/* QR Code */}
-                        <div className="bg-[#141420] border border-white/5 rounded-2xl p-6 text-center">
-                            <div className="flex items-center justify-center gap-2 mb-4">
-                                <QrCode size={20} className="text-gray-400" />
-                                <h3 className="font-semibold">QR Code for your Counter</h3>
+                        {/* QR Code Section */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="bg-[#141420] border border-white/5 rounded-2xl p-6 text-center">
+                                <div className="flex items-center justify-center gap-2 mb-4">
+                                    <QrCode size={20} className="text-emerald-400" />
+                                    <h3 className="font-semibold text-sm">WhatsApp QR</h3>
+                                </div>
+                                <div className="bg-white rounded-xl p-3 inline-block mx-auto mb-3">
+                                    <img
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`https://wa.me/${formData.contact_phone.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(formData.name)}`)}&bgcolor=ffffff&color=000000`}
+                                        alt="WhatsApp QR Code"
+                                        width={150}
+                                        height={150}
+                                        className="block"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-gray-500">Scan to order via WhatsApp</p>
                             </div>
-                            <div className="bg-white rounded-xl p-4 inline-block mx-auto mb-4">
-                                {/* Using a QR code API to generate the code */}
-                                <img
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(telegramLink)}&bgcolor=ffffff&color=000000`}
-                                    alt="QR Code for your Telegram ordering link"
-                                    width={200}
-                                    height={200}
-                                    className="block"
-                                />
+
+                            <div className="bg-[#141420] border border-white/5 rounded-2xl p-6 text-center">
+                                <div className="flex items-center justify-center gap-2 mb-4">
+                                    <QrCode size={20} className="text-blue-400" />
+                                    <h3 className="font-semibold text-sm">Telegram QR</h3>
+                                </div>
+                                <div className="bg-white rounded-xl p-3 inline-block mx-auto mb-3">
+                                    <img
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(telegramLink)}&bgcolor=ffffff&color=000000`}
+                                        alt="Telegram QR Code"
+                                        width={150}
+                                        height={150}
+                                        className="block"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-gray-500">Scan to order via Telegram</p>
                             </div>
-                            <p className="text-xs text-gray-500">
-                                Print this and place it at your counter. Customers scan → see menu → order → pay.
-                            </p>
                         </div>
 
                         {/* Next Steps */}
