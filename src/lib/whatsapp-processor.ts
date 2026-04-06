@@ -244,7 +244,8 @@ export async function processMessage(
         }
 
         // --- Vendor text commands: ACCEPT / REJECT / READY / DONE <orderId> ---
-        const vendorCmd = userInput.match(/^(accept|reject|ready|done)\s+([a-f0-9-]+)/i);
+        // Handles optional asterisks (*), extra spaces, and common formatting
+        const vendorCmd = userInput.match(/^(?:\*?\s*)(accept|reject|ready|done)\s+([a-f0-9-]+)(?:\s*\*?)$/i);
         if (vendorCmd) {
             const action = vendorCmd[1].toLowerCase() as "accept" | "reject" | "ready" | "done";
             const orderId = vendorCmd[2];
@@ -726,11 +727,11 @@ async function finalizeOrder(phone: string, org: Organization, session: Session)
     const summaryText = `📋 Order Summary:\n${session.cart.map((i) => `  ${i.quantity}x ${i.name}${i.variant ? ` (${i.variant})` : ""} — ${formatCurrency(i.total_price)}`).join("\n")}\n\nSubtotal: ${formatCurrency(subtotal)}\nTax: ${formatCurrency(taxAmount)}\n${deliveryFee > 0 ? `Delivery: ${formatCurrency(deliveryFee)}\n` : ""}💰 Total: ${formatCurrency(totalAmount)}\nType: ${session.orderType === 'delivery' ? '🚚 Delivery' : '🚶 Pick Up'}\nPayment: ${session.paymentMethod === 'online' ? '💳 Online' : '💵 Cash'}`;
 
     // --- Notify Vendor ---
-    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://cafeteriaflow.com"}/dashboard`;
+    const dashboardUrl = "https://w-orders.vercel.app/dashboard";
 
     if (org.notification_phone) {
         const shortId = order.id.slice(0, 8);
-        const vendorMsg = `🔔 *New Order!* (#${shortId})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})\n\n--- Manage Order ---\n🔗 Dashboard: ${dashboardUrl}\n\n✅ Type: *ACCEPT ${order.id}*\n❌ Type: *REJECT ${order.id}*`;
+        const vendorMsg = `🔔 *New Order!* (#${shortId})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})\n\n--- Manage Order ---\n🔗 Dashboard: ${dashboardUrl}\n\n✅ Type: *ACCEPT ${order.id}*\n❌ Type: *REJECT ${order.id}*\n\n(No asterisks needed, just regular text!)`;
         await sendTextMessage(org.notification_phone, vendorMsg);
     }
 
