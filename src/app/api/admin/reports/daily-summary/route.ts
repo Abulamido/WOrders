@@ -16,27 +16,32 @@ export async function GET(req: NextRequest) {
 
     const supabase = createServiceClient();
 
-    // 1. Get all active organizations with notification Telegram IDs
+    // 1. Get all active organizations
     const { data: orgs } = await supabase
         .from("organizations")
         .select("*")
-        .eq("is_active", true)
-        .not("notification_telegram_id", "is", null);
+        .eq("is_active", true);
 
     if (!orgs) return NextResponse.json({ message: "No orgs found" });
 
     const results = [];
 
     for (const org of orgs) {
+        // Skip if no notification channel at all
+        if (!org.notification_telegram_id && !org.notification_phone && !org.whatsapp_number) {
+            continue;
+        }
+
         // 2. Calculate stats for the last 24 hours
         const yesterday = new Date();
         yesterday.setHours(yesterday.getHours() - 24);
 
+        // Fetch all non-cancelled orders for accurate accounting
         const { data: orders } = await supabase
             .from("orders")
             .select("*")
             .eq("org_id", org.id)
-            .eq("payment_status", "paid")
+            .neq("status", "cancelled")
             .gte("created_at", yesterday.toISOString());
 
         if (!orders || orders.length === 0) {
@@ -61,12 +66,18 @@ export async function GET(req: NextRequest) {
             .map(([name, qty]) => `• ${name} (${qty})`)
             .join("\n");
 
-        // 4. Send Telegram Summary
+        // 4. Send Summary (Telegram primary, WhatsApp fallback)
         const summaryMsg = `📊 *Daily Sales Summary: ${org.name}*\n\n💰 Total Sales: ${formatCurrency(totalSales)}\n📦 Orders: ${orderCount}\n\n🔝 Top Items:\n${topItems || "None"}\n\n_Keep up the great work!_ 🚀`;
 
         try {
-            await sendMessage(org.notification_telegram_id!, summaryMsg);
-            results.push({ org: org.name, status: "Sent" });
+            if (org.notification_telegram_id) {
+                await sendMessage(org.notification_telegram_id, summaryMsg);
+                results.push({ org: org.name, channel: "Telegram", status: "Sent" });
+            } else if (org.notification_phone || org.whatsapp_number) {
+                const { sendTextMessage } = await import("@/lib/whatsapp-sender");
+                await sendTextMessage(org.notification_phone || org.whatsapp_number, summaryMsg);
+                results.push({ org: org.name, channel: "WhatsApp", status: "Sent" });
+            }
         } catch (err: any) {
             results.push({ org: org.name, status: "Error", error: err.message });
         }

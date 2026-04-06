@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
     DollarSign,
+    Store,
     ShoppingBag,
     TrendingUp,
     Clock,
@@ -64,7 +65,9 @@ export default function AnalyticsDashboard() {
             if (period === "week") start.setDate(start.getDate() - 7);
             if (period === "month") start.setDate(start.getDate() - 30);
 
-            const res = await fetch(`/api/orders/${orgId}?start=${start.toISOString()}&limit=500`);
+            const res = await fetch(`/api/orders/${orgId}?start=${start.toISOString()}&limit=500`, {
+                cache: "no-store",
+            });
             if (res.ok) {
                 const { orders } = await res.json();
                 if (!orders || orders.length === 0) {
@@ -172,6 +175,13 @@ export default function AnalyticsDashboard() {
         const orgId = localStorage.getItem("cafeteriaflow_org_id");
         if (orgId) {
             fetchAnalytics(orgId);
+            
+            // Auto-refresh heartbeat every 60 seconds
+            const interval = setInterval(() => {
+                fetchAnalytics(orgId);
+            }, 60000);
+            
+            return () => clearInterval(interval);
         }
     }, [fetchAnalytics]);
 
@@ -206,11 +216,14 @@ export default function AnalyticsDashboard() {
     return (
         <div className="pb-10">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold">Analytics</h1>
-                    <p className="text-gray-400 text-sm mt-1">
-                        Track your performance and trends
+                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                        Kitchen Analytics
+                    </h1>
+                    <p className="text-gray-500 mt-1 flex items-center gap-2">
+                        <Store size={14} className="text-emerald-500" />
+                        Active Kitchen: <span className="text-gray-300 font-medium">{typeof window !== 'undefined' ? localStorage.getItem("cafeteriaflow_org_name") || "Loading..." : "Loading..."}</span>
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
