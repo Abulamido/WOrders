@@ -272,7 +272,11 @@ export async function processMessage(
         } else if (resolvedInput.startsWith("cat_")) {
             await handleCategorySelect(from, org, resolvedInput, session);
         } else if (resolvedInput.startsWith("item_") || resolvedInput.startsWith("soldout_") || session.state === "category") {
-            if (resolvedInput.startsWith("item_")) session.selectedItemId = resolvedInput.replace("item_", "");
+            if (resolvedInput.startsWith("item_")) {
+                session.selectedItemId = resolvedInput.replace("item_", "");
+            } else if (resolvedInput.startsWith("soldout_")) {
+                session.selectedItemId = resolvedInput.replace("soldout_", "");
+            }
             await handleItemSelect(from, org, resolvedInput, session);
         } else if (resolvedInput.startsWith("var_") || session.state === "variant") {
             await handleVariantSelect(from, org, resolvedInput, session);
@@ -420,13 +424,18 @@ async function handleItemSelect(
     input: string,
     session: Session
 ) {
-    // Guard: Sold-out items cannot be selected
-    if (input.startsWith("soldout_")) {
-        await sendTextMessage(phone, "❌ Sorry, this item is currently sold out. Please pick something else!");
-        return;
+    // Try to get itemId from the input if it's already a prefixed ID
+    if (input.startsWith("item_")) {
+        session.selectedItemId = input.replace("item_", "");
     }
 
-    const itemId = session.selectedItemId!;
+    const itemId = session.selectedItemId;
+
+    if (!itemId) {
+        await sendTextMessage(phone, "❌ Selection lost. Please pick your item again from the menu.");
+        await sendCategories(phone, org, session);
+        return;
+    }
 
     const supabase = createServiceClient();
     const { data: item } = await supabase
