@@ -97,7 +97,8 @@ ${order.delivery_address ? `📍 Address: ${order.delivery_address}\n` : ""}Paym
                         }
 
                         // --- Notify Vendor ---
-                        const vendorMsgFull = `💰 *New Order Paid!* (#${shortId})\n\n${orderDetails}\n\nCheck your dashboard/chat to manage.`;
+                        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://w-orders.vercel.app";
+                        const vendorMsgFull = `💰 *New Order Paid!* (#${shortId})\n\n${orderDetails}\n\n🔗 Dashboard: ${appUrl}/dashboard/orders/${order.id}\n\nCheck your dashboard/chat to manage.`;
 
                         // Telegram Vendor Notify
                         if (order.organizations?.notification_telegram_id) {
@@ -106,6 +107,15 @@ ${order.delivery_address ? `📍 Address: ${order.delivery_address}\n` : ""}Paym
                         // WhatsApp Vendor Notify
                         if (order.organizations?.notification_phone) {
                             await sendTextMessage(order.organizations.notification_phone, vendorMsgFull).catch(console.error);
+                        }
+
+                        // --- CLEAR CART ---
+                        if (customerPhone && order.org_id) {
+                            await supabase
+                                .from("user_carts")
+                                .update({ cart: [], state: "idle" })
+                                .eq("phone", customerPhone)
+                                .eq("org_id", order.org_id);
                         }
 
                         // Update customer stats

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Store, Phone, ChevronRight, Loader2, KeyRound, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBrand } from "@/lib/brand-context";
 
 export default function LoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectPath = searchParams.get("redirect") || "/dashboard";
     const brand = useBrand();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -70,7 +72,7 @@ export default function LoginPage() {
                 const data = await res.json();
                 localStorage.setItem("cafeteriaflow_org_id", data.orgId);
                 if (data.name) localStorage.setItem("cafeteriaflow_org_name", data.name);
-                router.push("/dashboard");
+                router.push(redirectPath);
             } else {
                 const errData = await res.json();
                 setError(errData.error || "Invalid verification code");

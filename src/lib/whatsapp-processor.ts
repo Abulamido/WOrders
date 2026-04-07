@@ -286,6 +286,12 @@ export async function processMessage(
         } else if (resolvedInput === "add_more") {
             session.state = "browsing";
             await sendCategories(from, org, session);
+        } else if (resolvedInput === "view_cart" || resolvedInput === "cart") {
+            await showCartSummary(from, session);
+        } else if (resolvedInput === "remove_item") {
+            await handleShowRemoveMenu(from, session);
+        } else if (session.state === "cart_remove") {
+            await handleRemoveItem(from, org, resolvedInput, session);
         } else if (session.state.startsWith("checkout_")) {
             await processCheckoutInput(from, org, userInput, session); 
         } else if (resolvedInput === "history") {
@@ -547,6 +553,7 @@ async function showCartSummary(phone: string, session: Session) {
 
     const options = [
         { id: "add_more", title: "➕ Add More" },
+        { id: "remove_item", title: "🗑️ Remove Item" },
         { id: "checkout", title: "💳 Checkout" },
     ];
     setMenuOptions(session, options);
@@ -556,6 +563,47 @@ async function showCartSummary(phone: string, session: Session) {
         options
     );
     session.state = "cart";
+}
+
+/** Show a list of items to remove */
+async function handleShowRemoveMenu(phone: string, session: Session) {
+    if (session.cart.length === 0) {
+        await sendTextMessage(phone, "Your cart is empty.");
+        return;
+    }
+
+    const options = session.cart.map((item, index) => ({
+        id: `rem_${index}`,
+        title: `Remove ${item.name}`,
+        description: `${item.quantity}x ${item.variant || ""} — ${formatCurrency(item.total_price)}`,
+    }));
+
+    session.state = "cart_remove";
+    setMenuOptions(session, options);
+    await sendListMessage(
+        phone,
+        "Select an item to remove from your cart:",
+        "Remove Items",
+        [{ title: "Cart Items", rows: options }]
+    );
+}
+
+/** Process removal and show cart again */
+async function handleRemoveItem(phone: string, org: Organization, input: string, session: Session) {
+    if (input.startsWith("rem_")) {
+        const index = parseInt(input.replace("rem_", ""), 10);
+        if (!isNaN(index) && index >= 0 && index < session.cart.length) {
+            const removed = session.cart.splice(index, 1)[0];
+            await sendTextMessage(phone, `🗑️ Removed *${removed.name}* from your cart.`);
+        }
+    }
+
+    if (session.cart.length === 0) {
+        session.state = "browsing";
+        await sendCategories(phone, org, session);
+    } else {
+        await showCartSummary(phone, session);
+    }
 }
 
 /** Handle cart actions: add more or checkout */
@@ -727,7 +775,8 @@ async function finalizeOrder(phone: string, org: Organization, session: Session)
     const summaryText = `📋 Order Summary:\n${session.cart.map((i) => `  ${i.quantity}x ${i.name}${i.variant ? ` (${i.variant})` : ""} — ${formatCurrency(i.total_price)}`).join("\n")}\n\nSubtotal: ${formatCurrency(subtotal)}\nTax: ${formatCurrency(taxAmount)}\n${deliveryFee > 0 ? `Delivery: ${formatCurrency(deliveryFee)}\n` : ""}💰 Total: ${formatCurrency(totalAmount)}\nType: ${session.orderType === 'delivery' ? '🚚 Delivery' : '🚶 Pick Up'}\nPayment: ${session.paymentMethod === 'online' ? '💳 Online' : '💵 Cash'}`;
 
     // --- Notify Vendor ---
-    const dashboardUrl = "https://w-orders.vercel.app/dashboard";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://w-orders.vercel.app";
+    const dashboardUrl = `${appUrl}/dashboard/orders/${order.id}`;
 
     if (org.notification_phone) {
         const shortId = order.id.slice(0, 8);
@@ -760,8 +809,10 @@ async function finalizeOrder(phone: string, org: Organization, session: Session)
     } else {
         await sendTextMessage(phone, `✅ Your order has been placed successfully!\n\n${summaryText}\n\nWe will notify you when it's ready.`);
         session.state = "checkout_complete";
-        clearSession(phone, org.id); // clear cart after successful cash/free placement
     }
+
+    // ALWAYS Clear cart after order creation to prevent carry-over
+    await clearSession(phone, org.id);
 }
 
 /** Handle order history request */

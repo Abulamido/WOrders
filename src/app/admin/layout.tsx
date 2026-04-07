@@ -2,10 +2,14 @@
 
 import { LogOut, Store, LayoutDashboard, Users, Activity, Lock, KeyRound, Loader2, Building2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ReactNode, useState, useEffect } from "react";
 import { DEFAULT_BRAND } from "@/lib/brand";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectPath = searchParams.get("redirect") || "/admin";
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
@@ -33,6 +37,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
             if (res.ok) {
                 setIsAuthenticated(true);
+                // If there's a redirect, go there
+                if (redirectPath && redirectPath !== "/admin") {
+                    router.push(redirectPath);
+                }
             } else {
                 const data = await res.json();
                 setError(data.error || "Invalid admin password");

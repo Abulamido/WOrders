@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Building2, KeyRound, Loader2 } from "lucide-react";
 
 export default function AgencyLoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const redirectPath = searchParams.get("redirect") || "/agency-dashboard";
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [slug, setSlug] = useState("");
@@ -28,7 +30,7 @@ export default function AgencyLoginPage() {
             if (res.ok) {
                 localStorage.setItem("cf_agency_id", data.agencyId);
                 localStorage.setItem("cf_agency_slug", data.slug);
-                router.push("/agency-dashboard");
+                router.push(redirectPath);
             } else {
                 setError(data.error || "Failed to log in");
             }

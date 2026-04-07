@@ -42,7 +42,7 @@ export async function middleware(req: NextRequest) {
             
             const url = req.nextUrl.clone();
             url.pathname = loginPath;
-            // Optionally add redirect=target back later
+            url.searchParams.set('redirect', pathname);
             return NextResponse.redirect(url);
         }
 
