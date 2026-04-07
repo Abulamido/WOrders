@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { setSessionCookie } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
     const supabase = createServiceClient();
@@ -30,8 +31,15 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: "Invalid password." }, { status: 401 });
             }
         }
+        
+        // 7. Store session in secure HttpOnly cookie
+        await setSessionCookie({ 
+            agencyId: agency.id, 
+            role: 'agency',
+            slug: agency.slug 
+        } as any);
 
-        // Send back the agency details (no tokens needed, we'll use localStorage for MVP)
+        // Send back the agency details
         return NextResponse.json({ success: true, agencyId: agency.id, slug: agency.slug });
 
     } catch (e: any) {

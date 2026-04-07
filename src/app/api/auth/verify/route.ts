@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { setSessionCookie } from "@/lib/auth";
 
 const OTP_CONFIG = {
     length: 4,
@@ -97,6 +98,13 @@ export async function POST(req: NextRequest) {
             .from("vendor_otps")
             .delete()
             .eq("phone", phone);
+
+        // 7. Store session in secure HttpOnly cookie
+        await setSessionCookie({ 
+            orgId: org.id, 
+            role: 'vendor', 
+            phoneNumber: phone 
+        });
 
         return NextResponse.json({ orgId: org.id, name: org.name });
     } catch (e: any) {

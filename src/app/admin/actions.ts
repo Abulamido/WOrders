@@ -1,10 +1,21 @@
 "use server";
 
 import { createServiceClient } from "@/lib/supabase";
+import { getSession } from "@/lib/auth";
+
+async function ensureAdmin() {
+    const session = await getSession();
+    if (!session || session.role !== 'admin') {
+        throw new Error("Unauthorized: Admin access required");
+    }
+    return session;
+}
 
 export async function getAdminDashboardStats() {
+    await ensureAdmin();
     const supabase = createServiceClient();
     try {
+        // ... existing stats logic ...
         // Fetch vendors
         const { data: orgs } = await supabase
             .from("organizations")
@@ -65,6 +76,7 @@ export async function getAdminDashboardStats() {
 }
 
 export async function getAdminVendors() {
+    await ensureAdmin();
     const supabase = createServiceClient();
     const { data } = await supabase
         .from("organizations")
@@ -74,6 +86,7 @@ export async function getAdminVendors() {
 }
 
 export async function toggleAdminVendorStatus(id: string, newStatus: boolean) {
+    await ensureAdmin();
     const supabase = createServiceClient();
     const { error } = await supabase
         .from("organizations")
@@ -87,6 +100,7 @@ export async function toggleAdminVendorStatus(id: string, newStatus: boolean) {
 }
 
 export async function updateVendorApprovalStatus(id: string, status: "approved" | "rejected" | "pending") {
+    await ensureAdmin();
     const supabase = createServiceClient();
     const { error } = await supabase
         .from("organizations")
@@ -100,6 +114,7 @@ export async function updateVendorApprovalStatus(id: string, status: "approved" 
 }
 
 export async function updateVendorPlatformFee(id: string, fee: number) {
+    await ensureAdmin();
     const supabase = createServiceClient();
     const { error } = await supabase
         .from("organizations")
@@ -113,6 +128,7 @@ export async function updateVendorPlatformFee(id: string, fee: number) {
 }
 
 export async function getAdminCustomers() {
+    await ensureAdmin();
     const supabase = createServiceClient();
     const { data } = await supabase
         .from("customers")
@@ -124,6 +140,7 @@ export async function getAdminCustomers() {
 import { revalidatePath } from "next/cache";
 
 export async function createAgency(formData: FormData) {
+    await ensureAdmin();
     const supabase = createServiceClient();
     const name = formData.get("name") as string;
     const slug = formData.get("slug") as string;

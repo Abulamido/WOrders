@@ -22,24 +22,12 @@ export default function AgencyDashboardLayout({ children }: { children: ReactNod
     const [agencyId, setAgencyId] = useState<string | null>(null);
 
     useEffect(() => {
-        // Skip auth check if we are on the login page
-        if (pathname === "/agency-dashboard/login") {
-            setLoading(false);
-            return;
-        }
+        // Just set loading to false as middleware handles the actual protection
+        setLoading(false);
+    }, []);
 
-        const storedId = localStorage.getItem("cf_agency_id");
-        if (!storedId) {
-            router.push("/agency-dashboard/login");
-        } else {
-            setAgencyId(storedId);
-            setLoading(false);
-        }
-    }, [pathname, router]);
-
-    const handleLogout = () => {
-        localStorage.removeItem("cf_agency_id");
-        localStorage.removeItem("cf_agency_slug");
+    const handleLogout = async () => {
+        await fetch("/api/auth/logout", { method: "POST" });
         router.push("/agency-dashboard/login");
     };
 

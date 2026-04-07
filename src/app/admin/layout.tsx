@@ -19,21 +19,34 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         setLoading(false);
     }, []);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        // MVP Hardcoded Admin Password
-        if (password === (process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "CF_SECRET_2024")) {
-            sessionStorage.setItem("cf_admin_auth", "true");
-            setIsAuthenticated(true);
-            setError("");
-        } else {
-            setError("Invalid admin password");
+        setLoading(true);
+        setError("");
+
+        try {
+            const res = await fetch("/api/auth/admin/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password }),
+            });
+
+            if (res.ok) {
+                setIsAuthenticated(true);
+            } else {
+                const data = await res.json();
+                setError(data.error || "Invalid admin password");
+            }
+        } catch {
+            setError("Something went wrong");
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleLogout = () => {
-        sessionStorage.removeItem("cf_admin_auth");
-        setIsAuthenticated(false);
+    const handleLogout = async () => {
+        await fetch("/api/auth/logout", { method: "POST" });
+        window.location.href = "/admin/login";
     };
 
     if (loading) {
