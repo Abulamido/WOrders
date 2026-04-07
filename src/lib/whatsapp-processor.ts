@@ -786,8 +786,18 @@ async function finalizeOrder(phone: string, org: Organization, session: Session)
 
     if (org.notification_phone) {
         const shortId = order.id.slice(0, 8);
-        const vendorMsg = `🔔 *New Order!* (#${shortId})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})\n\n--- Manage Order ---\n🔗 Dashboard: ${dashboardUrl}\n\n✅ Type: *ACCEPT ${order.id}*\n❌ Type: *REJECT ${order.id}*\n\n(No asterisks needed, just regular text!)`;
+        const vendorMsg = `🔔 *New Order!* (#${shortId})\n\n👤 ${session.customerName || phone} (${phone})\nType: ${session.orderType === 'delivery' ? 'Delivery' : 'Pick Up'}\n${session.deliveryAddress ? `📍 ${session.deliveryAddress}\n` : ""}\nItems:\n${session.cart.map((i) => `• ${i.quantity}x ${i.name}`).join("\n")}\n\n💰 Total: ${formatCurrency(totalAmount)} (${session.paymentMethod})\n\n--- Manage Order ---\n1️⃣ ✅ Accept Order\n2️⃣ ❌ Reject Order\n\n🔗 Dashboard: ${dashboardUrl}\n\n(Reply with *1* or *2*)`;
         await sendTextMessage(org.notification_phone, vendorMsg);
+
+        // --- Store Vendor Context ---
+        // This allows the vendor to reply "1" or "2" to manage THIS specific order.
+        const vendorSession = await getSession(org.notification_phone, org.id);
+        vendorSession.lastMenuOptions = [
+            { id: `order_accept_${order.id}`, title: "Accept" },
+            { id: `order_reject_${order.id}`, title: "Reject" }
+        ];
+        vendorSession.state = "vendor_waiting";
+        await saveSession(vendorSession);
     }
 
     if (session.paymentMethod === "online" && totalAmount > 0) {
@@ -955,4 +965,10 @@ async function handleVendorOrderAction(vendorPhone: string, action: "accept" | "
         };
         await sendTextMessage(order.customer_phone, customerMessages[action]);
     }
+
+    // Clear vendor menu options to prevent accidental double-action
+    const vendorSess = await getSession(vendorPhone, order.org_id);
+    vendorSess.lastMenuOptions = [];
+    vendorSess.state = "idle";
+    await saveSession(vendorSess);
 }
