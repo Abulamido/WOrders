@@ -290,6 +290,11 @@ export async function processMessage(
             await showCartSummary(from, session);
         } else if (resolvedInput === "remove_item") {
             await handleShowRemoveMenu(from, session);
+        } else if (resolvedInput === "clear_cart") {
+            await clearSession(from, org.id);
+            await sendTextMessage(from, "🛒 Your cart has been cleared. Type 'Menu' to start a search fresh!");
+            session.cart = [];
+            session.state = "idle";
         } else if (session.state === "cart_remove") {
             await handleRemoveItem(from, org, resolvedInput, session);
         } else if (session.state.startsWith("checkout_")) {
@@ -554,6 +559,7 @@ async function showCartSummary(phone: string, session: Session) {
     const options = [
         { id: "add_more", title: "➕ Add More" },
         { id: "remove_item", title: "🗑️ Remove Item" },
+        { id: "clear_cart", title: "💥 Clear Cart" },
         { id: "checkout", title: "💳 Checkout" },
     ];
     setMenuOptions(session, options);
