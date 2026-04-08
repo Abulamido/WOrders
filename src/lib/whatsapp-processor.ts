@@ -20,6 +20,8 @@ import { createPaymentLink } from "./stripe";
 import { formatCurrency } from "./utils";
 import type { Organization, MenuItem, OrderItem } from "@/types/database";
 
+const MARKETPLACE_ORG_ID = 'ffffffff-ffff-ffff-ffff-ffffffffffff';
+
 // Database-backed session persistence via 'user_carts' table
 interface CartItem {
     item_id: string;
@@ -291,6 +293,27 @@ export async function processMessage(
             await clearSession(from, org.id);
             await handleStoreSelection(from);
             return;
+        }
+
+        // --- Cross-Tenant Switching (Marketplace Selection) ---
+        if (resolvedInput.startsWith("switch_")) {
+            const targetSlug = resolvedInput.replace("switch_", "");
+            const { data: targetOrg } = await supabase
+                .from("organizations")
+                .select("*")
+                .eq("slug", targetSlug)
+                .eq("is_active", true)
+                .single();
+            
+            if (targetOrg) {
+                // Transfer user to the new org and start welcome flow
+                const targetSession = await getSession(from, targetOrg.id);
+                targetSession.state = "idle";
+                targetSession.cart = [];
+                await saveSession(targetSession);
+                await handleWelcome(from, targetOrg, targetSession);
+                return;
+            }
         }
 
         // --- Vendor text commands: ACCEPT / REJECT / READY / DONE <orderId> ---
@@ -1033,6 +1056,7 @@ async function handleStoreSelection(phone: string) {
         .from("organizations")
         .select("name, slug")
         .eq("is_active", true)
+        .neq("id", MARKETPLACE_ORG_ID) // Don't list the marketplace itself
         .limit(10);
 
     if (!orgs || orgs.length === 0) {
@@ -1040,10 +1064,16 @@ async function handleStoreSelection(phone: string) {
         return;
     }
 
-    const storeList = orgs.map((o, idx) => `${idx + 1}. ${o.name} (type *${o.slug}*)`).join("\n");
-    const welcomeMsg = `👋 *Welcome to MenuHorse Marketplace!*\n\nPlease select a store to start ordering:\n\n${storeList}\n\n_Simply type the name of the store or its slug to begin._`;
+    const session = await getSession(phone, MARKETPLACE_ORG_ID);
+    const options = orgs.map(o => ({
+        id: `switch_${o.slug}`,
+        title: o.name
+    }));
+    setMenuOptions(session, options);
+    await saveSession(session);
 
-    // We can't use numbered mapping without an org_id context, 
-    // but the slug-based routing in processMessage will catch the text replies!
+    const storeList = orgs.map((o, idx) => `*${idx + 1}*. ${o.name}`).join("\n");
+    const welcomeMsg = `👋 *Welcome to MenuFlow Marketplace!*\n\nPlease select a store to start ordering:\n\n${storeList}\n\n_Reply with the number or name of the store!_`;
+
     await sendTextMessage(phone, welcomeMsg);
 }

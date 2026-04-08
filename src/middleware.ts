@@ -31,7 +31,7 @@ export async function middleware(req: NextRequest) {
 
     // 3. Handle protected routes
     if (protection) {
-        const sessionToken = req.cookies.get('menuhorse_session')?.value;
+        const sessionToken = req.cookies.get('menuflow_session')?.value;
         const session = sessionToken ? await decrypt(sessionToken) : null;
 
         // If no session, redirect to appropriate login

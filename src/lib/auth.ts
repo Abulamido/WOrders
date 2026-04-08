@@ -102,10 +102,10 @@ export async function getSession(req?: NextRequest) {
     let session: string | undefined;
     
     if (req) {
-        session = req.cookies.get('menuhorse_session')?.value;
+        session = req.cookies.get('menuflow_session')?.value;
     } else {
         const cookieStore = await cookies();
-        session = cookieStore.get('menuhorse_session')?.value;
+        session = cookieStore.get('menuflow_session')?.value;
     }
     
     if (!session) return null;
@@ -117,5 +117,5 @@ export async function getSession(req?: NextRequest) {
  */
 export async function logout() {
     const cookieStore = await cookies();
-    cookieStore.set('menuhorse_session', '', { expires: new Date(0), path: '/' });
+    cookieStore.set('menuflow_session', '', { expires: new Date(0), path: '/' });
 }
