@@ -284,6 +284,15 @@ export async function processMessage(
             return;
         }
 
+        // EXIT command to go back to Marketplace
+        if (userInput === "exit" || userInput === "back") {
+            // We clear the cart but also the "sticky" preference by simply not loading the org in the next message
+            // and instead manually triggering discovery now.
+            await clearSession(from, org.id);
+            await handleStoreSelection(from);
+            return;
+        }
+
         // --- Vendor text commands: ACCEPT / REJECT / READY / DONE <orderId> ---
         // Handles optional asterisks (*), extra spaces, and common formatting
         const vendorCmd = userInput.match(/^(?:\*?\s*)(accept|reject|ready|done)\s+([a-f0-9-]+)(?:\s*\*?)$/i);
