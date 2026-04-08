@@ -183,27 +183,75 @@ export async function processMessage(
         console.warn("Could not mark message as read:", e);
     }
 
-    // Find organization by exact number
-    let { data: org } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("whatsapp_number", businessNumber)
-        .eq("is_active", true)
-        .single();
-
-    // MVP Fallback: If no exact match, grab the first active org
-    if (!org) {
-        const { data: firstOrg } = await supabase
-            .from("organizations")
-            .select("*")
-            .eq("is_active", true)
-            .limit(1)
-            .single();
-        org = firstOrg;
+    // 1. Extract user input FIRST to support slug-based routing
+    let userInput = "";
+    if (message.type === "text" && message.text) {
+        userInput = message.text.body.trim().toLowerCase();
+    } else if (message.type === "interactive") {
+        if (message.interactive?.button_reply) {
+            userInput = message.interactive.button_reply.id;
+        } else if (message.interactive?.list_reply) {
+            userInput = message.interactive.list_reply.id;
+        }
     }
 
+    // 2. IDENTIFY ORGANIZATION (Marketplace vs White-Label)
+    let org: Organization | null = null;
+    let switchOrg = false;
+
+    // A. Slug Check (Priority 1): Did they type a store slug? (e.g. "pizzahut" or "menu pizzahut")
+    const slugMatch = userInput.match(/^(?:menu\s+)?([a-z0-9-]+)$/i);
+    if (slugMatch) {
+        const potentialSlug = slugMatch[1];
+        const { data: slugOrg } = await supabase
+            .from("organizations")
+            .select("*")
+            .eq("slug", potentialSlug)
+            .eq("is_active", true)
+            .single();
+        if (slugOrg) {
+            org = slugOrg;
+            switchOrg = true;
+        }
+    }
+
+    // B. White-Label Number Match (Priority 2): If this number belongs to EXACTLY one active org, use it.
     if (!org) {
-        await sendTextMessage(from, "Sorry, this service is currently unavailable.");
+        const { data: numOrgs } = await supabase
+            .from("organizations")
+            .select("*")
+            .eq("whatsapp_number", businessNumber)
+            .eq("is_active", true);
+        
+        if (numOrgs && numOrgs.length === 1) {
+            org = numOrgs[0];
+        }
+    }
+
+    // C. Sticky Session (Priority 3): If on a shared/unknown number, use the user's most recent session.
+    if (!org) {
+        const { data: existingSess } = await supabase
+            .from("user_carts")
+            .select("org_id")
+            .eq("phone", from)
+            .order("last_interaction", { ascending: false })
+            .limit(1)
+            .single();
+        
+        if (existingSess) {
+            const { data: sessOrg } = await supabase
+                .from("organizations")
+                .select("*")
+                .eq("id", existingSess.org_id)
+                .eq("is_active", true)
+                .single();
+            if (sessOrg) org = sessOrg;
+        }
+    }
+
+    // D. Marketplace Discovery (Priority 4): Fallback to Store Selection
+    if (!org) {
+        await handleStoreSelection(from);
         return;
     }
 
@@ -217,17 +265,10 @@ export async function processMessage(
     });
 
     const session = await getSession(from, org.id);
-
-    // Extract user input
-    let userInput = "";
-    if (message.type === "text" && message.text) {
-        userInput = message.text.body.trim().toLowerCase();
-    } else if (message.type === "interactive") {
-        if (message.interactive?.button_reply) {
-            userInput = message.interactive.button_reply.id;
-        } else if (message.interactive?.list_reply) {
-            userInput = message.interactive.list_reply.id;
-        }
+    if (switchOrg) {
+        // If they explicitly typed a new slug, clear their old state for this org
+        session.state = "idle";
+        session.cart = [];
     }
 
     // Resolve numbered replies (e.g. "1" → "cat_abc123")
@@ -971,4 +1012,29 @@ async function handleVendorOrderAction(vendorPhone: string, action: "accept" | "
     vendorSess.lastMenuOptions = [];
     vendorSess.state = "idle";
     await saveSession(vendorSess);
+}
+
+/**
+ * Handle store discovery on shared/marketplace numbers.
+ * Fetches active organizations and presents them to the user.
+ */
+async function handleStoreSelection(phone: string) {
+    const supabase = createServiceClient();
+    const { data: orgs } = await supabase
+        .from("organizations")
+        .select("name, slug")
+        .eq("is_active", true)
+        .limit(10);
+
+    if (!orgs || orgs.length === 0) {
+        await sendTextMessage(phone, "Sorry, there are no active stores at the moment. Please check back later!");
+        return;
+    }
+
+    const storeList = orgs.map((o, idx) => `${idx + 1}. ${o.name} (type *${o.slug}*)`).join("\n");
+    const welcomeMsg = `👋 *Welcome to MenuHorse Marketplace!*\n\nPlease select a store to start ordering:\n\n${storeList}\n\n_Simply type the name of the store or its slug to begin._`;
+
+    // We can't use numbered mapping without an org_id context, 
+    // but the slug-based routing in processMessage will catch the text replies!
+    await sendTextMessage(phone, welcomeMsg);
 }
