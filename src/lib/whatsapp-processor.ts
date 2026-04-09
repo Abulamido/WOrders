@@ -175,7 +175,7 @@ export async function processMessage(
     metadata: { display_phone_number: string }
 ) {
     const supabase = createServiceClient();
-    const from = message.from;
+    const from = message.from.replace(/\D/g, ""); // Clean ID (strip @c.us or other suffixes)
     const businessNumber = metadata.display_phone_number;
 
     // Mark message as read (non-blocking for MVP/testing)
@@ -317,7 +317,8 @@ export async function processMessage(
         }
 
         // --- Vendor text commands: ACCEPT / REJECT / READY / DONE / OPEN / CLOSE <orderId?> ---
-        const vendorCmd = userInput.match(/^(?:\*?\s*)(accept|reject|ready|done|open|close)(?:\s+([a-f0-9-]+))?(?:\s*\*?)$/i);
+        // Loosened regex to allow 'CLOSE Raven's Cafe' etc.
+        const vendorCmd = userInput.match(/^(?:\*?\s*)(accept|reject|ready|done|open|close)(?:\s+(.*))?$/i);
         if (vendorCmd) {
             const action = vendorCmd[1].toLowerCase();
             const orderId = vendorCmd[2];
