@@ -316,14 +316,21 @@ export async function processMessage(
             }
         }
 
-        // --- Vendor text commands: ACCEPT / REJECT / READY / DONE <orderId> ---
-        // Handles optional asterisks (*), extra spaces, and common formatting
-        const vendorCmd = userInput.match(/^(?:\*?\s*)(accept|reject|ready|done)\s+([a-f0-9-]+)(?:\s*\*?)$/i);
+        // --- Vendor text commands: ACCEPT / REJECT / READY / DONE / OPEN / CLOSE <orderId?> ---
+        const vendorCmd = userInput.match(/^(?:\*?\s*)(accept|reject|ready|done|open|close)(?:\s+([a-f0-9-]+))?(?:\s*\*?)$/i);
         if (vendorCmd) {
-            const action = vendorCmd[1].toLowerCase() as "accept" | "reject" | "ready" | "done";
+            const action = vendorCmd[1].toLowerCase();
             const orderId = vendorCmd[2];
-            await handleVendorOrderAction(from, action, orderId);
-            return;
+
+            if (action === "open" || action === "close") {
+                await handleVendorStatusAction(from, org, action as "open" | "close");
+                return;
+            }
+
+            if (orderId) {
+                await handleVendorOrderAction(from, action as "accept" | "reject" | "ready" | "done", orderId);
+                return;
+            }
         }
 
         if (resolvedInput.startsWith("order_accept_") || resolvedInput.startsWith("order_reject_")) {
@@ -354,6 +361,8 @@ export async function processMessage(
             await handleItemSelect(from, org, resolvedInput, session);
         } else if (resolvedInput.startsWith("var_") || session.state === "variant") {
             await handleVariantSelect(from, org, resolvedInput, session);
+        } else if (resolvedInput.startsWith("mod_") || session.state === "modifier") {
+            await handleModifierSelect(from, org, resolvedInput, session);
         } else if (resolvedInput === "add_to_cart" || resolvedInput === "checkout") {
             await handleCartAction(from, org, resolvedInput, session);
         } else if (resolvedInput === "add_more") {
@@ -562,16 +571,21 @@ async function handleItemSelect(
             [{ title: "Sizes", rows: variantOptions }]
         );
     } else {
-        // No variants — add directly to cart
-        const cartItem: CartItem = {
-            item_id: item.id,
-            name: item.name,
-            quantity: 1,
-            unit_price: item.price,
-            total_price: item.price,
-        };
-        session.cart.push(cartItem);
-        await showCartSummary(phone, session);
+        // No variants — check for modifiers
+        if (item.modifiers && item.modifiers.length > 0) {
+            await showModifierPicker(phone, item, undefined, session);
+        } else {
+            // No modifiers — add directly to cart
+            const cartItem: CartItem = {
+                item_id: item.id,
+                name: item.name,
+                quantity: 1,
+                unit_price: item.price,
+                total_price: item.price,
+            };
+            session.cart.push(cartItem);
+            await showCartSummary(phone, session);
+        }
     }
 }
 
@@ -606,17 +620,125 @@ async function handleVariantSelect(
     );
 
     const price = variant?.price || menuItem.price;
-    const cartItem: CartItem = {
-        item_id: menuItem.id,
-        name: menuItem.name,
-        variant: variantName,
-        quantity: 1,
-        unit_price: price,
-        total_price: price,
-    };
-    session.cart.push(cartItem);
-    session.state = "cart";
-    await showCartSummary(phone, session);
+    session.selectedVariantName = variantName;
+
+    // Check for modifiers after variant selection
+    if (menuItem.modifiers && menuItem.modifiers.length > 0) {
+        await showModifierPicker(phone, menuItem, variantName, session);
+    } else {
+        const cartItem: CartItem = {
+            item_id: menuItem.id,
+            name: menuItem.name,
+            variant: variantName,
+            quantity: 1,
+            unit_price: price,
+            total_price: price,
+        };
+        session.cart.push(cartItem);
+        session.state = "cart";
+        await showCartSummary(phone, session);
+    }
+}
+
+/** Show modifier selection menu */
+async function showModifierPicker(phone: string, item: MenuItem, variantName: string | undefined, session: Session) {
+    session.state = "modifier";
+    session.selectedVariantName = variantName || "";
+    session.selectedModifiers = []; // Reset selected modifiers for this turn
+
+    const modOptions = (item.modifiers as { name: string; price: number }[]).map((m) => ({
+        id: `mod_${m.name}`,
+        title: `${m.name} (+${formatCurrency(m.price)})`,
+    }));
+
+    // Add a "Finish" option
+    const options = [
+        ...modOptions,
+        { id: "mod_done", title: "✅ Finish & Add to Cart" }
+    ];
+
+    setMenuOptions(session, options);
+    await sendListMessage(
+        phone,
+        `Any extras for your ${variantName ? `${variantName} ` : ""}${item.name}?`,
+        "Select Extras",
+        [{ title: "Modifiers", rows: options }]
+    );
+}
+
+/** Handle modifier selection */
+async function handleModifierSelect(
+    phone: string,
+    _org: Organization,
+    input: string,
+    session: Session
+) {
+    const itemId = session.selectedItemId;
+    if (!itemId) {
+        await sendTextMessage(phone, "Selection lost. Please try again.");
+        return;
+    }
+
+    const supabase = createServiceClient();
+    const { data: menuItem } = await supabase.from("menu_items").select("*").eq("id", itemId).single();
+    if (!menuItem) return;
+
+    if (input === "mod_done") {
+        // Finalize selection
+        const variant = (menuItem.variants as any[])?.find(v => v.name === session.selectedVariantName);
+        const basePrice = variant?.price || menuItem.price;
+        
+        let modTotal = 0;
+        const modNames: string[] = session.selectedModifiers || [];
+        
+        if (modNames.length > 0) {
+            const mods = menuItem.modifiers as any[];
+            modNames.forEach(name => {
+                const m = mods.find(mod => mod.name === name);
+                if (m) modTotal += m.price;
+            });
+        }
+
+        const cartItem: CartItem = {
+            item_id: menuItem.id,
+            name: menuItem.name,
+            variant: session.selectedVariantName || undefined,
+            modifiers: modNames.length > 0 ? modNames : undefined,
+            quantity: 1,
+            unit_price: basePrice + modTotal,
+            total_price: basePrice + modTotal,
+        };
+
+        session.cart.push(cartItem);
+        session.state = "cart";
+        await showCartSummary(phone, session);
+        return;
+    }
+
+    // Toggle modifier selection
+    const modName = input.replace("mod_", "");
+    if (!session.selectedModifiers) session.selectedModifiers = [];
+    
+    if (session.selectedModifiers.includes(modName)) {
+        session.selectedModifiers = session.selectedModifiers.filter(m => m !== modName);
+        await sendTextMessage(phone, `Removed: ${modName}`);
+    } else {
+        session.selectedModifiers.push(modName);
+        await sendTextMessage(phone, `Added: ${modName}. Select more or click 'Finish'.`);
+    }
+    
+    // Show current selection
+    const current = session.selectedModifiers.length > 0 
+        ? `\nCurrent selection: ${session.selectedModifiers.join(", ")}` 
+        : "";
+    
+    const options = (session.lastMenuOptions as any[]);
+    await sendListMessage(
+        phone,
+        `Extras for ${menuItem.name}:${current}`,
+        "Select Extras",
+        [{ title: "Modifiers", rows: options }]
+    );
 }
 
 /** Show cart summary with add more / checkout */
@@ -1076,4 +1198,31 @@ async function handleStoreSelection(phone: string) {
     const welcomeMsg = `👋 *Welcome to MenuFlow Marketplace!*\n\nPlease select a store to start ordering:\n\n${storeList}\n\n_Reply with the number or name of the store!_`;
 
     await sendTextMessage(phone, welcomeMsg);
+}
+
+/** 
+ * Handle Vendor store status toggle (OPEN / CLOSE) 
+ */
+async function handleVendorStatusAction(phone: string, org: Organization, action: "open" | "close") {
+    const supabase = createServiceClient();
+    const isOpen = action === "open";
+
+    const { error } = await supabase
+        .from("organizations")
+        .update({ is_open_manually: isOpen })
+        .eq("id", org.id);
+
+    if (error) {
+        await sendTextMessage(phone, `❌ Error updating store status: ${error.message}`);
+        return;
+    }
+
+    const msg = isOpen 
+        ? `🟢 *Store is now OPEN.* You will receive notifications for new orders!`
+        : `🔴 *Store is now CLOSED.* Customers can browse but cannot place new orders.`;
+    
+    await sendTextMessage(phone, msg);
+    await logOutgoingMessage(org.id, phone, msg);
+
+    // Also notify other staff if any? (MVP: just the sender for now)
 }

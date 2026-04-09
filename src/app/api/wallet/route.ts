@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
     // 3. Fetch org payout account details
     const { data: org } = await supabase
         .from("organizations")
-        .select("payout_account_details")
+        .select("payout_account_details, platform_fee_percent")
         .eq("id", orgId)
         .single();
 
@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
             pendingPayouts: Math.round(pendingPayouts * 100) / 100,
             availableBalance: Math.round(availableBalance * 100) / 100,
             totalOrders: (paidOrders || []).length,
+            feePercent: org?.platform_fee_percent || 5,
         },
         payoutRequests: payoutRequests || [],
         payoutAccountDetails: org?.payout_account_details || null,

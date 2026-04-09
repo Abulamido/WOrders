@@ -20,6 +20,7 @@ import {
     Check
 } from "lucide-react";
 import { cn, formatCurrency, formatRelativeTime, shortOrderId } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 type OrderStatus = "pending" | "preparing" | "ready" | "completed" | "cancelled";
 
@@ -125,12 +126,44 @@ export default function OrdersDashboard() {
 
     // Initial fetch and polling
     useEffect(() => {
-        if (orgId) {
-            fetchOrders();
-            const interval = setInterval(() => fetchOrders(), 5000); // Poll every 5 seconds for MVP "real-time"
-            return () => clearInterval(interval);
-        }
-    }, [orgId, fetchOrders]);
+        if (!orgId) return;
+        
+        fetchOrders();
+        
+        // Polling fallback
+        const interval = setInterval(() => fetchOrders(), 30000); // reduced to 30s as backup
+
+        // REAL-TIME: Listen for changes to orders table
+        const channel = supabase
+            .channel(`orders-realtime-${orgId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `org_id=eq.${orgId}`
+                },
+                (payload) => {
+                    console.log('Realtime update received!', payload);
+                    fetchOrders();
+                    
+                    // Trigger sound for new arrivals
+                    if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.new.status === 'pending' && payload.old.status !== 'pending')) {
+                        if (soundEnabled) {
+                            const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                            audio.play().catch(e => console.log("Sound play failed:", e));
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            clearInterval(interval);
+            supabase.removeChannel(channel);
+        };
+    }, [orgId, fetchOrders, soundEnabled]);
 
     const handleStatusChange = useCallback(
         async (orderId: string, newStatus: OrderStatus) => {

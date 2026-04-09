@@ -232,7 +232,7 @@ export default function WalletPage() {
                             <span className="text-xs uppercase font-bold text-gray-500 tracking-wider">Platform Fees</span>
                         </div>
                         <p className="text-2xl font-black text-red-400">-{formatCurrency(summary.totalPlatformFees)}</p>
-                        <p className="text-xs text-gray-500 mt-1">5% platform fee</p>
+                        <p className="text-xs text-gray-500 mt-1">{(summary as any).feePercent}% platform fee</p>
                     </div>
 
                     <div className="bg-[#141420] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all">
