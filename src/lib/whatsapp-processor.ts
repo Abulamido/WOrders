@@ -1203,26 +1203,45 @@ async function handleStoreSelection(phone: string) {
 /** 
  * Handle Vendor store status toggle (OPEN / CLOSE) 
  */
-async function handleVendorStatusAction(phone: string, org: Organization, action: "open" | "close") {
+async function handleVendorStatusAction(phone: string, currentOrg: Organization, action: "open" | "close") {
     const supabase = createServiceClient();
     const isOpen = action === "open";
 
-    const { error } = await supabase
+    // FIND ORGANIZATIONS MANAGED BY THIS PHONE
+    // This allows OPEN/CLOSE to work even on shared numbers
+    const { data: managedOrgs } = await supabase
         .from("organizations")
-        .update({ is_open_manually: isOpen })
-        .eq("id", org.id);
+        .select("id, name")
+        .eq("notification_phone", phone)
+        .eq("is_active", true);
 
-    if (error) {
-        await sendTextMessage(phone, `❌ Error updating store status: ${error.message}`);
+    const targetOrgs = managedOrgs && managedOrgs.length > 0 
+        ? managedOrgs 
+        : (currentOrg.id !== MARKETPLACE_ORG_ID ? [currentOrg] : []);
+
+    if (targetOrgs.length === 0) {
+        await sendTextMessage(phone, "❌ You don't seem to be registered as a staff member for any active store. Please check your notification phone set up.");
         return;
     }
 
+    const targetIds = targetOrgs.map(o => o.id);
+    const { error } = await supabase
+        .from("organizations")
+        .update({ is_open_manually: isOpen })
+        .in("id", targetIds);
+
+    if (error) {
+        await sendTextMessage(phone, `❌ Error updating status: ${error.message}`);
+        return;
+    }
+
+    const orgNames = targetOrgs.map(o => o.name).join(" & ");
     const msg = isOpen 
-        ? `🟢 *Store is now OPEN.* You will receive notifications for new orders!`
-        : `🔴 *Store is now CLOSED.* Customers can browse but cannot place new orders.`;
+        ? `🟢 *${orgNames}* is now OPEN. You will receive notifications for new orders!`
+        : `🔴 *${orgNames}* is now CLOSED. Customers can browse but cannot place new orders.`;
     
     await sendTextMessage(phone, msg);
-    await logOutgoingMessage(org.id, phone, msg);
-
-    // Also notify other staff if any? (MVP: just the sender for now)
+    for (const org of targetOrgs) {
+        await logOutgoingMessage(org.id, phone, msg);
+    }
 }
