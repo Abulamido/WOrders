@@ -549,6 +549,15 @@ async function handleItemSelect(
         return;
     }
 
+    // Guard: Block ordering when store is closed
+    if (org.is_open_manually === false) {
+        await sendTextMessage(
+            phone,
+            `⚠️ Sorry, *${org.name}* is currently closed and cannot accept orders right now.\n\nYou're welcome to browse the menu, but ordering is paused. Please check back later!`
+        );
+        return;
+    }
+
     session.selectedItemId = itemId;
 
     // Send product image if available
