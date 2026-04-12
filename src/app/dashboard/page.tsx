@@ -393,14 +393,14 @@ export default function OrdersDashboard() {
                                     </p>
                                     <div className="flex items-center gap-2">
                                         <button
-                                            onClick={() => handleCopyLink(`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(organization.name)}`)}
+                                            onClick={() => handleCopyLink(`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${organization.slug}`)}
                                             className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-bold rounded-lg transition-all"
                                         >
                                             {copied ? <Check size={14} /> : <Copy size={14} />}
                                             {copied ? "Copied!" : "Copy Link"}
                                         </button>
                                         <a
-                                            href={`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(organization.name)}`}
+                                            href={`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${organization.slug}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 rounded-lg transition-all"
@@ -450,7 +450,7 @@ export default function OrdersDashboard() {
                         </div>
                         <div className="bg-white p-3 rounded-2xl mb-4 shadow-2xl shadow-emerald-500/10">
                             <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(organization.name)}`)}&bgcolor=ffffff&color=000000`}
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`https://wa.me/${organization.whatsapp_number?.replace(/\D/g, '')}?text=Hi!+I'd+like+to+see+the+menu+for+${organization.slug}`)}&bgcolor=ffffff&color=000000`}
                                 alt="WhatsApp QR Code"
                                 width={160}
                                 height={160}

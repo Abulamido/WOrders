@@ -72,6 +72,8 @@ export default function LoginPage() {
                 const data = await res.json();
                 localStorage.setItem("cafeteriaflow_org_id", data.orgId);
                 if (data.name) localStorage.setItem("cafeteriaflow_org_name", data.name);
+                if (data.slug) localStorage.setItem("cafeteriaflow_org_slug", data.slug);
+                if (data.phone) localStorage.setItem("cafeteriaflow_org_phone", data.phone);
                 router.push(redirectPath);
             } else {
                 const errData = await res.json();

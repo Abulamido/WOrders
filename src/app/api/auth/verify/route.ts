@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
         // 5. Code is correct! Find the organization
         let query = supabase
             .from("organizations")
-            .select("id, name");
+            .select("id, name, slug, whatsapp_number");
             
         if (orgId) {
             query = query.eq("id", orgId);
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
             phoneNumber: phone 
         });
 
-        return NextResponse.json({ orgId: org.id, name: org.name });
+        return NextResponse.json({ orgId: org.id, name: org.name, slug: org.slug, phone: org.whatsapp_number });
     } catch (e: any) {
         console.error("Verification error:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });

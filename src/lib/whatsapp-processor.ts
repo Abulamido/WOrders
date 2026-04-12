@@ -201,8 +201,12 @@ export async function processMessage(
     let org: Organization | null = null;
     let switchOrg = false;
 
-    // A. Slug Check (Priority 1): Did they type a store slug? (e.g. "pizzahut" or "menu pizzahut")
-    const slugMatch = userInput.match(/^(?:menu\s+)?([a-z0-9-]+)$/i);
+    // A. Slug Check (Priority 1): Did they type a store slug? (e.g. "pizzahut", "menu pizzahut", or wa.me link "hi! i'd like to see the menu for pizzahut")
+    let slugMatch = userInput.match(/menu\s+for\s+([a-z0-9-]+)/i);
+    if (!slugMatch) {
+        slugMatch = userInput.match(/^(?:menu\s+)?([a-z0-9-]+)$/i);
+    }
+    
     if (slugMatch) {
         const potentialSlug = slugMatch[1];
         const { data: slugOrg } = await supabase

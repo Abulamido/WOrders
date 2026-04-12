@@ -175,7 +175,8 @@ export default function AnalyticsDashboard() {
     const handleCopyLink = () => {
         const orgName = localStorage.getItem("cafeteriaflow_org_name") || "your kitchen";
         const orgPhone = (localStorage.getItem("cafeteriaflow_org_phone") || "+1234567890").replace(/\D/g, "");
-        const link = `https://wa.me/${orgPhone}?text=Hi!+I'd+like+to+see+the+menu+for+${encodeURIComponent(orgName)}`;
+        const orgSlug = localStorage.getItem("cafeteriaflow_org_slug") || orgName.toLowerCase().replace(/\s+/g, '-');
+        const link = `https://wa.me/${orgPhone}?text=Hi!+I'd+like+to+see+the+menu+for+${orgSlug}`;
         navigator.clipboard.writeText(link);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
