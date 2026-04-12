@@ -21,45 +21,46 @@ export default async function LandingPage() {
     <div className="min-h-screen bg-slate-50 text-gray-900 overflow-hidden font-sans selection:bg-brand-primary/20">
       
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 lg:px-12 py-4 border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="flex items-center gap-3">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 lg:px-12 py-3 sm:py-4 border-b border-gray-200 bg-white/80 backdrop-blur-md">
+        <div className="flex items-center gap-2 sm:gap-3">
           {brand.logoUrl ? (
-            <img src={brand.logoUrl} alt={brand.name} className="h-8 w-auto" />
+            <img src={brand.logoUrl} alt={brand.name} className="h-6 sm:h-8 w-auto" />
           ) : (
-            <span className="text-2xl">{brand.icon}</span>
+            <span className="text-xl sm:text-2xl">{brand.icon}</span>
           )}
-          <span className="font-bold text-xl tracking-tight text-gray-900">
+          <span className="font-bold text-lg sm:text-xl tracking-tight text-gray-900 hidden sm:inline-block">
             {brand.name}
           </span>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-3 sm:gap-6">
           <Link
             href="/login"
-            className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+            className="text-xs sm:text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
           >
             Vendor Login
           </Link>
           <Link
             href="/onboarding"
-            className="px-5 py-2.5 text-gray-900 text-sm font-bold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
+            className="px-3 sm:px-5 py-2 sm:py-2.5 text-gray-900 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg hover:-translate-y-0.5"
             style={{ backgroundColor: brand.secondaryColor }}
           >
-            Start Free Trial
+            <span className="hidden sm:inline">Start Free Trial</span>
+            <span className="sm:hidden">Start Free</span>
           </Link>
         </div>
       </nav>
 
       {/* SECTION 1: The Header (Character & Hook) */}
-      <header className="relative z-10 max-w-5xl mx-auto px-6 pt-32 pb-16 lg:pt-48 lg:pb-20 text-center">
+      <header className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-28 sm:pt-32 pb-12 sm:pb-16 lg:pt-48 lg:pb-20 text-center">
         {/* Subtle background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-brand-primary/5 blur-[100px] rounded-full -z-10" />
 
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-gray-700 text-xs sm:text-sm font-medium mb-8">
-          <span className="w-2 h-2 rounded-full bg-brand-secondary animate-pulse" style={{ backgroundColor: brand.secondaryColor }} />
+        <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-slate-100 border border-slate-200 text-gray-700 text-[10px] sm:text-sm font-medium mb-6 sm:mb-8 whitespace-normal text-center mx-auto">
+          <span className="w-2 h-2 rounded-full bg-brand-secondary animate-pulse flex-shrink-0" style={{ backgroundColor: brand.secondaryColor }} />
           Running natively on WhatsApp & Telegram
         </div>
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 leading-[1.1] tracking-tight mb-6 sm:mb-8">
+        <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 leading-[1.15] sm:leading-[1.1] tracking-tight mb-5 sm:mb-8">
           Stop losing customers to <br className="hidden md:block" />
           <span style={{ color: brand.primaryColor }}>long lines and slow service.</span>
         </h1>
@@ -68,24 +69,24 @@ export default async function LandingPage() {
           Turn their favorite chat apps into your fastest cash register. Let your customers order and pay in under 60 seconds directly via WhatsApp and Telegram. Zero app downloads required.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
           <Link
             href="/onboarding"
-            className="flex items-center gap-2 px-8 py-4 text-gray-900 font-bold rounded-2xl text-lg transition-all duration-200 hover:-translate-y-1"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto px-6 sm:px-8 py-3.5 sm:py-4 text-gray-900 font-bold rounded-2xl text-base sm:text-lg transition-all duration-200 hover:-translate-y-1"
             style={{ backgroundColor: brand.secondaryColor, boxShadow: `0 10px 25px -5px ${brand.secondaryColor}40` }}
           >
-            Create Your Free Restaurant <ArrowRight size={20} />
+            Create Your Restaurant <ArrowRight size={18} className="sm:hidden" /><ArrowRight size={20} className="hidden sm:block" />
           </Link>
-          <p className="text-sm text-gray-500 mt-3 sm:mt-0 sm:ml-4 text-left">
+          <p className="text-xs sm:text-sm text-gray-500 mt-2 sm:mt-0 sm:ml-4 text-center sm:text-left">
             14-day free trial. <br className="hidden sm:block" />No credit card required.
           </p>
         </div>
       </header>
 
       {/* SECTION 2: The Problem (Villain) */}
-      <section className="bg-white py-16 lg:py-24 px-6 relative border-y border-gray-100">
+      <section className="bg-white py-12 sm:py-16 lg:py-24 px-4 sm:px-6 relative border-y border-gray-100">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center mb-12 lg:mb-16 text-gray-900 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center mb-8 sm:mb-12 lg:mb-16 text-gray-900 tracking-tight">
             The lunch rush shouldn't feel like a penalty.
           </h2>
 
@@ -112,8 +113,8 @@ export default async function LandingPage() {
       </section>
 
       {/* SECTION 3: The Guide */}
-      <section className="py-16 lg:py-24 px-6 max-w-5xl mx-auto text-center relative z-10">
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-6 tracking-tight">
+      <section className="py-12 sm:py-16 lg:py-24 px-4 sm:px-6 max-w-5xl mx-auto text-center relative z-10">
+        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-4 sm:mb-6 tracking-tight">
             We believe ordering food should be frictionless.
         </h2>
         <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-12">
@@ -143,9 +144,9 @@ export default async function LandingPage() {
       </section>
 
       {/* SECTION 4: The Plan */}
-      <section className="bg-slate-100 py-16 lg:py-24 px-6 border-y border-gray-200">
+      <section className="bg-slate-100 py-12 sm:py-16 lg:py-24 px-4 sm:px-6 border-y border-gray-200">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center text-gray-900 mb-12 lg:mb-16 tracking-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center text-gray-900 mb-8 sm:mb-12 lg:mb-16 tracking-tight">
             Three steps to cut the queue
           </h2>
 
@@ -181,13 +182,13 @@ export default async function LandingPage() {
       </section>
 
       {/* SECTION 5: The Stakes / CTA */}
-      <section className="py-16 lg:py-24 px-6 bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto bg-gray-900 rounded-[2rem] p-8 sm:p-12 lg:p-16 text-center shadow-2xl relative overflow-hidden">
+      <section className="py-12 sm:py-16 lg:py-24 px-4 sm:px-6 bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto bg-gray-900 rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-12 lg:p-16 text-center shadow-2xl relative overflow-hidden">
           {/* Accent glow on dark card */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-brand-secondary/20 blur-[80px] rounded-full" style={{ backgroundColor: `${brand.secondaryColor}40` }} />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-primary/20 blur-[80px] rounded-full" style={{ backgroundColor: `${brand.primaryColor}40` }} />
+          <div className="absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-brand-secondary/20 blur-[60px] sm:blur-[80px] rounded-full point-events-none" style={{ backgroundColor: `${brand.secondaryColor}40` }} />
+          <div className="absolute bottom-0 left-0 w-48 sm:w-64 h-48 sm:h-64 bg-brand-primary/20 blur-[60px] sm:blur-[80px] rounded-full pointer-events-none" style={{ backgroundColor: `${brand.primaryColor}40` }} />
           
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white mb-6 tracking-tight relative z-10">
+          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-black text-white mb-4 sm:mb-6 tracking-tight relative z-10 leading-tight">
             Ready to reclaim your peak hours?
           </h2>
           <p className="text-lg sm:text-xl text-gray-300 mb-10 max-w-2xl mx-auto relative z-10 font-medium leading-relaxed">
@@ -196,7 +197,7 @@ export default async function LandingPage() {
           
           <Link
             href="/onboarding"
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 sm:px-10 sm:py-5 text-gray-900 font-bold rounded-2xl text-lg sm:text-xl transition-all duration-200 hover:scale-105 relative z-10 shadow-xl"
+            className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-4 sm:px-10 sm:py-5 text-gray-900 font-bold rounded-2xl text-base sm:text-xl transition-all duration-200 hover:scale-105 relative z-10 shadow-xl"
             style={{ backgroundColor: brand.secondaryColor }}
           >
             Start your free 14-day trial
