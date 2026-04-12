@@ -77,22 +77,22 @@ export default function DashboardLayout({
         .toUpperCase();
 
     return (
-        <div className="min-h-screen bg-[#0a0a0f] text-white">
+        <div className="min-h-screen bg-slate-50 text-gray-900">
             {/* Mobile header */}
-            <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-16 bg-[#0f0f1a]/95 backdrop-blur-xl border-b border-white/5">
+            <header className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 h-16 bg-white/95 backdrop-blur-xl border-b border-gray-200 shadow-sm">
                 <div className="flex items-center gap-3">
                     {brand.logoUrl ? (
                         <img src={brand.logoUrl} alt={brand.name} className="h-6 w-auto" />
                     ) : (
                         <span className="text-xl">{brand.icon}</span>
                     )}
-                    <span className="font-bold text-lg text-white">
+                    <span className="font-bold text-lg text-gray-900">
                         {brand.name}
                     </span>
                 </div>
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="p-2 rounded-lg hover:bg-white/5 transition-colors"
+                    className="p-2 rounded-lg hover:bg-slate-100 text-gray-600 transition-colors"
                 >
                     {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
                 </button>
@@ -101,18 +101,18 @@ export default function DashboardLayout({
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "fixed top-0 left-0 z-40 h-screen w-64 bg-[#0f0f1a] border-r border-white/5 transition-transform duration-300 lg:translate-x-0",
+                    "fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-gray-200 shadow-sm transition-transform duration-300 lg:translate-x-0",
                     sidebarOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
                 {/* Logo */}
-                <div className="flex items-center gap-3 px-6 h-16 border-b border-white/5">
+                <div className="flex items-center gap-3 px-6 h-16 border-b border-gray-100">
                     {brand.logoUrl ? (
                         <img src={brand.logoUrl} alt={brand.name} className="h-8 w-auto" />
                     ) : (
                         <span className="text-2xl">{brand.icon}</span>
                     )}
-                    <span className="font-bold text-xl text-white">
+                    <span className="font-bold text-xl text-gray-900">
                         {brand.name}
                     </span>
                 </div>
@@ -132,16 +132,17 @@ export default function DashboardLayout({
                                 href={item.href}
                                 onClick={() => setSidebarOpen(false)}
                                 className={cn(
-                                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
+                                    "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200",
                                     isActive
-                                        ? "bg-emerald-500/10 text-emerald-400 shadow-lg shadow-emerald-500/5"
-                                        : "text-gray-400 hover:text-white hover:bg-white/5"
+                                        ? "shadow-sm" 
+                                        : "text-gray-500 hover:text-gray-900 hover:bg-slate-50"
                                 )}
+                                style={isActive ? { backgroundColor: `${brand.primaryColor}15`, color: brand.primaryColor } : {}}
                             >
                                 <Icon size={20} />
                                 {item.label}
                                 {isActive && (
-                                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                    <div className="ml-auto w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: brand.secondaryColor }} />
                                 )}
                             </Link>
                         );
@@ -149,21 +150,21 @@ export default function DashboardLayout({
                 </nav>
 
                 {/* Bottom section — Dynamic org name + logout */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-white/5">
-                    <div className="flex items-center gap-3 px-3 py-2">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white shadow-lg" style={{ background: `linear-gradient(to bottom right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-white">
+                    <div className="flex items-center gap-2 px-2 py-2">
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-gray-900 shadow-md flex-shrink-0" style={{ background: `linear-gradient(to bottom right, ${brand.primaryColor}, ${brand.secondaryColor})` }}>
                             {initials}
                         </div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{orgName}</p>
+                            <p className="text-sm font-bold text-gray-900 truncate">{orgName}</p>
                             <p className="text-xs text-gray-500">Restaurant</p>
                         </div>
                         <button
                             onClick={handleLogout}
-                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
                             title="Log out"
                         >
-                            <LogOut size={16} />
+                            <LogOut size={18} />
                         </button>
                     </div>
                 </div>
@@ -184,3 +185,4 @@ export default function DashboardLayout({
         </div>
     );
 }
+

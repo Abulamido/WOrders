@@ -296,10 +296,10 @@ export default function OrdersDashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="hidden lg:flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-2">
+                    <div className="hidden lg:flex items-center gap-4 bg-white/5 border border-gray-200 rounded-2xl px-4 py-2">
                         <div className="flex flex-col">
                             <span className="text-[10px] uppercase font-bold text-gray-500 leading-none mb-1">Gross Sales</span>
-                            <span className="text-sm font-bold text-white leading-none">{formatCurrency(grossRevenue)}</span>
+                            <span className="text-sm font-bold text-gray-900 leading-none">{formatCurrency(grossRevenue)}</span>
                         </div>
                         <div className="w-px h-8 bg-white/10" />
                         <div className="flex flex-col">
@@ -350,7 +350,7 @@ export default function OrdersDashboard() {
                                 href={`https://t.me/Cafteriaflow_bot?start=vendor_${orgId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0088cc] hover:bg-[#0088cc]/90 text-white text-sm font-bold transition-all shadow-lg shadow-[#0088cc]/10"
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-primary hover:bg-brand-primary/90 text-gray-900 text-sm font-bold transition-all shadow-lg shadow-brand-primary/10"
                             >
                                 <Send size={16} />
                                 <span>Connect Telegram</span>
@@ -364,7 +364,7 @@ export default function OrdersDashboard() {
             {/* Sharing & Customer Links */}
             {organization && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
-                    <div className="lg:col-span-2 bg-[#141420] border border-white/5 rounded-2xl p-6 relative overflow-hidden group">
+                    <div className="lg:col-span-2 bg-white border border-gray-200 rounded-2xl p-6 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
                             <Share2 size={120} />
                         </div>
@@ -443,7 +443,7 @@ export default function OrdersDashboard() {
                         </div>
                     </div>
 
-                    <div className="bg-[#141420] border border-white/5 rounded-2xl p-6 text-center flex flex-col justify-center items-center">
+                    <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center flex flex-col justify-center items-center">
                         <div className="flex items-center gap-2 mb-4 text-gray-400">
                             <QrCode size={18} />
                             <span className="text-sm font-semibold uppercase tracking-wider">WhatsApp QR Code</span>
@@ -497,10 +497,10 @@ export default function OrdersDashboard() {
                                 {colOrders.map((order) => (
                                     <div
                                         key={order.id}
-                                        className="bg-[#141420] border border-white/5 rounded-xl p-4 hover:border-white/10 transition-all duration-200 hover:shadow-lg hover:shadow-black/20"
+                                        className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-200 transition-all duration-200 hover:shadow-lg hover:shadow-black/20"
                                     >
                                         <div className="flex items-center justify-between mb-3">
-                                            <Link href={`/dashboard/orders/${order.id}`} className="font-mono text-sm font-bold text-white/80 hover:text-emerald-400 transition-colors">
+                                            <Link href={`/dashboard/orders/${order.id}`} className="font-mono text-sm font-bold text-gray-900/80 hover:text-emerald-400 transition-colors">
                                                 {shortOrderId(order.id)}
                                             </Link>
                                             <span className="text-xs text-gray-500">
@@ -538,7 +538,7 @@ export default function OrdersDashboard() {
                                             ))}
                                         </div>
 
-                                        <div className="flex flex-col pt-3 border-t border-white/5 gap-2">
+                                        <div className="flex flex-col pt-3 border-t border-gray-200 gap-2">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-bold text-sm">
                                                     {formatCurrency(order.total_amount)}
@@ -604,3 +604,4 @@ export default function OrdersDashboard() {
         </div>
     );
 }
+

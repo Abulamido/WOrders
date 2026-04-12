@@ -244,13 +244,13 @@ export default function AnalyticsDashboard() {
                             "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 shadow-lg",
                             sent
                                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-emerald-500/10"
-                                : "bg-white/5 hover:bg-white/10 text-white border border-white/10 shadow-black/20"
+                                : "bg-white/5 hover:bg-white/10 text-gray-900 border border-gray-200 shadow-black/20"
                         )}
                     >
                         {sending ? <Loader2 size={16} className="animate-spin" /> : sent ? <Check size={16} /> : <Share2 size={16} />}
                         {sending ? "Sending..." : sent ? "Summary Sent!" : "Send Summary to Telegram"}
                     </button>
-                    <div className="flex items-center bg-[#141420] rounded-xl border border-white/5 p-1">
+                    <div className="flex items-center bg-white rounded-xl border border-gray-200 p-1">
                         {(["today", "week", "month"] as const).map((p) => (
                             <button
                                 key={p}
@@ -259,7 +259,7 @@ export default function AnalyticsDashboard() {
                                     "px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                                     period === p
                                         ? "bg-emerald-500/10 text-emerald-400"
-                                        : "text-gray-400 hover:text-white"
+                                        : "text-gray-400 hover:text-gray-900"
                                 )}
                             >
                                 {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -283,7 +283,7 @@ export default function AnalyticsDashboard() {
                             return (
                                 <div
                                     key={stat.label}
-                                    className="bg-[#141420] border border-white/5 rounded-xl p-5 hover:border-white/10 transition-all duration-200"
+                                    className="bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-200 transition-all duration-200"
                                 >
                                     <div className="flex items-center justify-between mb-3">
                                         <div
@@ -321,14 +321,14 @@ export default function AnalyticsDashboard() {
 
                     {/* Channel Breakdown */}
                     <div className="flex gap-4 mb-8">
-                        <div className="flex-1 bg-[#141420] border border-white/5 rounded-xl p-4 flex items-center gap-4">
+                        <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-lg">📱</div>
                             <div>
                                 <p className="text-2xl font-bold text-green-400">{data.channelBreakdown.whatsapp}</p>
                                 <p className="text-xs text-gray-500">WhatsApp Orders</p>
                             </div>
                         </div>
-                        <div className="flex-1 bg-[#141420] border border-white/5 rounded-xl p-4 flex items-center gap-4">
+                        <div className="flex-1 bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4">
                             <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-lg">💬</div>
                             <div>
                                 <p className="text-2xl font-bold text-blue-400">{data.channelBreakdown.telegram}</p>
@@ -339,7 +339,7 @@ export default function AnalyticsDashboard() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                         {/* Peak Hours Chart */}
-                        <div className="bg-[#141420] border border-white/5 rounded-xl p-6">
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
                             <div className="flex items-center gap-2 mb-6">
                                 <BarChart3 size={18} className="text-emerald-400" />
                                 <h3 className="font-semibold">Orders by Hour</h3>
@@ -370,7 +370,7 @@ export default function AnalyticsDashboard() {
                         </div>
 
                         {/* Top Items */}
-                        <div className="bg-[#141420] border border-white/5 rounded-xl p-6">
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
                             <div className="flex items-center gap-2 mb-6">
                                 <TrendingUp size={18} className="text-violet-400" />
                                 <h3 className="font-semibold">Top Items</h3>
@@ -414,7 +414,7 @@ export default function AnalyticsDashboard() {
 
                     {/* Order Status Breakdown */}
                     {Object.keys(data.ordersByStatus).length > 0 && (
-                        <div className="bg-[#141420] border border-white/5 rounded-xl p-6">
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
                             <div className="flex items-center gap-2 mb-6">
                                 <ShoppingBag size={18} className="text-blue-400" />
                                 <h3 className="font-semibold">Order Status Breakdown</h3>
@@ -424,7 +424,7 @@ export default function AnalyticsDashboard() {
                                     <div
                                         key={status}
                                         className={cn(
-                                            "px-4 py-2.5 rounded-xl text-sm font-medium border border-white/5",
+                                            "px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-200",
                                             statusColors[status] || "bg-gray-500/20 text-gray-400"
                                         )}
                                     >
@@ -440,3 +440,4 @@ export default function AnalyticsDashboard() {
         </div>
     );
 }
+

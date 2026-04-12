@@ -165,7 +165,7 @@ export default function SettingsPage() {
                         "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 shadow-lg",
                         saved
                             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-emerald-500/10"
-                            : "bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/20 disabled:opacity-50"
+                            : "bg-emerald-500 hover:bg-emerald-400 text-gray-900 shadow-emerald-500/20 disabled:opacity-50"
                     )}
                 >
                     {saved ? (
@@ -183,7 +183,7 @@ export default function SettingsPage() {
             ) : (
                 <>
                     {/* Ordering Link & QR Code */}
-                    <div className="bg-[#141420] border border-emerald-500/20 rounded-xl p-6">
+                    <div className="bg-white border border-emerald-500/20 rounded-xl p-6">
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                                 <QrCode size={20} className="text-emerald-400" />
@@ -194,7 +194,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
 
-                        <div className="bg-black/40 border border-white/10 rounded-xl p-4 mb-4 flex items-center justify-between">
+                        <div className="bg-black/40 border border-gray-200 rounded-xl p-4 mb-4 flex items-center justify-between">
                             <code className="text-sm text-emerald-400 break-all bg-transparent outline-none flex-1">
                                 {telegramLink || "Loading your link..."}
                             </code>
@@ -222,7 +222,7 @@ export default function SettingsPage() {
                                 href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(telegramLink)}&bgcolor=ffffff&color=000000`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 text-white font-semibold text-sm rounded-xl hover:bg-white/10 transition-all"
+                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/5 border border-gray-200 text-gray-900 font-semibold text-sm rounded-xl hover:bg-white/10 transition-all"
                             >
                                 <QrCode size={16} /> Download QR Code
                             </a>
@@ -231,7 +231,7 @@ export default function SettingsPage() {
 
                     <div className="space-y-6">
                         {/* Telegram Notifications */}
-                        <div className="bg-[#141420] border border-blue-500/20 rounded-xl p-6 relative overflow-hidden group">
+                        <div className="bg-white border border-blue-500/20 rounded-xl p-6 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all duration-300" />
                             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                                 <div className="flex items-center gap-3">
@@ -249,7 +249,7 @@ export default function SettingsPage() {
                                     href={`https://t.me/${telegramUsername}?start=vendor_${orgId}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-white text-sm font-bold rounded-lg transition-all"
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-400 text-gray-900 text-sm font-bold rounded-lg transition-all"
                                 >
                                     Link Telegram Bot
                                 </a>
@@ -257,7 +257,7 @@ export default function SettingsPage() {
                         </div>
 
                         {/* Holiday Mode */}
-                        <div className="bg-[#141420] border border-white/5 rounded-xl p-6">
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
@@ -290,7 +290,7 @@ export default function SettingsPage() {
                         </div>
 
                         {/* Business Hours */}
-                        <div className="bg-[#141420] border border-white/5 rounded-xl p-6">
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                                     <Clock size={20} className="text-blue-400" />
@@ -336,7 +336,7 @@ export default function SettingsPage() {
                                                                 [day]: { ...prev[day], open: e.target.value },
                                                             }))
                                                         }
-                                                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                                                        className="bg-white/5 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-emerald-500/50"
                                                     />
                                                     <span className="text-gray-500 text-sm">to</span>
                                                     <input
@@ -348,7 +348,7 @@ export default function SettingsPage() {
                                                                 [day]: { ...prev[day], close: e.target.value },
                                                             }))
                                                         }
-                                                        className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500/50"
+                                                        className="bg-white/5 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:border-emerald-500/50"
                                                     />
                                                 </div>
                                             )}
@@ -359,7 +359,7 @@ export default function SettingsPage() {
                         </div>
 
                         {/* Order Settings */}
-                        <div className="bg-[#141420] border border-white/5 rounded-xl p-6">
+                        <div className="bg-white border border-gray-200 rounded-xl p-6">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
                                     <Shield size={20} className="text-violet-400" />
@@ -386,7 +386,7 @@ export default function SettingsPage() {
                                             type="number"
                                             value={prepTime}
                                             onChange={(e) => setPrepTime(Number(e.target.value))}
-                                            className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-emerald-500/50"
+                                            className="w-20 bg-white/5 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 text-center focus:outline-none focus:border-emerald-500/50"
                                         />
                                         <span className="text-sm text-gray-500">min</span>
                                     </div>
@@ -405,7 +405,7 @@ export default function SettingsPage() {
                                             type="number"
                                             value={maxOrders}
                                             onChange={(e) => setMaxOrders(Number(e.target.value))}
-                                            className="w-20 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white text-center focus:outline-none focus:border-emerald-500/50"
+                                            className="w-20 bg-white/5 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-900 text-center focus:outline-none focus:border-emerald-500/50"
                                         />
                                         <span className="text-sm text-gray-500">/slot</span>
                                     </div>
@@ -435,3 +435,4 @@ export default function SettingsPage() {
         </div>
     );
 }
+

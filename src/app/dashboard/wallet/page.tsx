@@ -213,18 +213,18 @@ export default function WalletPage() {
             {/* Summary Cards */}
             {summary && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-[#141420] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all">
+                    <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-gray-200 transition-all">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
                                 <TrendingUp size={20} className="text-blue-400" />
                             </div>
                             <span className="text-xs uppercase font-bold text-gray-500 tracking-wider">Gross Revenue</span>
                         </div>
-                        <p className="text-2xl font-black text-white">{formatCurrency(summary.grossRevenue)}</p>
+                        <p className="text-2xl font-black text-gray-900">{formatCurrency(summary.grossRevenue)}</p>
                         <p className="text-xs text-gray-500 mt-1">{summary.totalOrders} paid orders</p>
                     </div>
 
-                    <div className="bg-[#141420] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all">
+                    <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-gray-200 transition-all">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
                                 <BadgeDollarSign size={20} className="text-red-400" />
@@ -235,7 +235,7 @@ export default function WalletPage() {
                         <p className="text-xs text-gray-500 mt-1">{(summary as any).feePercent}% platform fee</p>
                     </div>
 
-                    <div className="bg-[#141420] border border-white/5 rounded-2xl p-5 hover:border-white/10 transition-all">
+                    <div className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-gray-200 transition-all">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
                                 <DollarSign size={20} className="text-emerald-400" />
@@ -264,7 +264,7 @@ export default function WalletPage() {
             {/* Request Payout + Bank Account */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Request Payout */}
-                <div className="bg-[#141420] border border-white/5 rounded-2xl p-6">
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
                     <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                         <ArrowUpRight size={20} className="text-emerald-400" />
                         Request Payout
@@ -294,7 +294,7 @@ export default function WalletPage() {
                                     value={payoutAmount}
                                     onChange={(e) => setPayoutAmount(e.target.value)}
                                     placeholder="Enter amount"
-                                    className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 font-mono text-white text-lg"
+                                    className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 font-mono text-gray-900 text-lg"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">
                                     Available: {formatCurrency(summary?.availableBalance || 0)}
@@ -305,7 +305,7 @@ export default function WalletPage() {
                                 <Building2 size={16} className="text-gray-500" />
                                 <div className="text-sm">
                                     <span className="text-gray-400">Payout to: </span>
-                                    <span className="text-white font-medium">
+                                    <span className="text-gray-900 font-medium">
                                         {payoutAccount.bank_name} ····{payoutAccount.account_number.slice(-4)}
                                     </span>
                                 </div>
@@ -330,7 +330,7 @@ export default function WalletPage() {
                 </div>
 
                 {/* Bank Account */}
-                <div className="bg-[#141420] border border-white/5 rounded-2xl p-6">
+                <div className="bg-white border border-gray-200 rounded-2xl p-6">
                     <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                         <CreditCard size={20} className="text-blue-400" />
                         Bank Account
@@ -338,19 +338,19 @@ export default function WalletPage() {
 
                     {payoutAccount && !showBankForm ? (
                         <div className="space-y-4">
-                            <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16162a] border border-white/10 rounded-2xl p-5 relative overflow-hidden">
+                            <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16162a] border border-gray-200 rounded-2xl p-5 relative overflow-hidden">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -translate-y-16 translate-x-16" />
                                 <div className="relative">
                                     <p className="text-xs uppercase tracking-wider text-gray-500 mb-1">Bank</p>
-                                    <p className="text-lg font-bold text-white mb-4">{payoutAccount.bank_name}</p>
+                                    <p className="text-lg font-bold text-gray-900 mb-4">{payoutAccount.bank_name}</p>
                                     <div className="flex justify-between items-end">
                                         <div>
                                             <p className="text-xs text-gray-500">Account Holder</p>
-                                            <p className="text-sm text-white font-medium">{payoutAccount.account_holder}</p>
+                                            <p className="text-sm text-gray-900 font-medium">{payoutAccount.account_holder}</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="text-xs text-gray-500">Account</p>
-                                            <p className="text-sm text-white font-mono">····{payoutAccount.account_number.slice(-4)}</p>
+                                            <p className="text-sm text-gray-900 font-mono">····{payoutAccount.account_number.slice(-4)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -372,7 +372,7 @@ export default function WalletPage() {
                                     value={bankName}
                                     onChange={(e) => setBankName(e.target.value)}
                                     placeholder="e.g. Chase, Bank of America"
-                                    className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-white"
+                                    className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-gray-900"
                                 />
                             </div>
                             <div>
@@ -382,7 +382,7 @@ export default function WalletPage() {
                                     required
                                     value={accountHolder}
                                     onChange={(e) => setAccountHolder(e.target.value)}
-                                    className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-white"
+                                    className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-gray-900"
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -393,7 +393,7 @@ export default function WalletPage() {
                                         required
                                         value={accountNumber}
                                         onChange={(e) => setAccountNumber(e.target.value)}
-                                        className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-white font-mono"
+                                        className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-gray-900 font-mono"
                                     />
                                 </div>
                                 <div>
@@ -402,7 +402,7 @@ export default function WalletPage() {
                                         type="text"
                                         value={routingNumber}
                                         onChange={(e) => setRoutingNumber(e.target.value)}
-                                        className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-white font-mono"
+                                        className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-gray-900 font-mono"
                                     />
                                 </div>
                             </div>
@@ -411,7 +411,7 @@ export default function WalletPage() {
                                 <select
                                     value={bankType}
                                     onChange={(e) => setBankType(e.target.value)}
-                                    className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-white"
+                                    className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-blue-500/50 text-gray-900"
                                 >
                                     <option value="checking">Checking</option>
                                     <option value="savings">Savings</option>
@@ -448,7 +448,7 @@ export default function WalletPage() {
             </div>
 
             {/* Payout History */}
-            <div className="bg-[#141420] border border-white/5 rounded-2xl p-6">
+            <div className="bg-white border border-gray-200 rounded-2xl p-6">
                 <h2 className="text-lg font-bold mb-4">Payout History</h2>
 
                 {payoutRequests.length === 0 ? (
@@ -464,14 +464,14 @@ export default function WalletPage() {
                             return (
                                 <div
                                     key={payout.id}
-                                    className="flex items-center justify-between py-3 px-4 bg-white/[0.02] rounded-xl border border-white/5 hover:border-white/10 transition-all"
+                                    className="flex items-center justify-between py-3 px-4 bg-white/[0.02] rounded-xl border border-gray-200 hover:border-gray-200 transition-all"
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border", config.bg)}>
                                             <StatusIcon size={18} className={cn(config.color, payout.status === "processing" && "animate-spin")} />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold text-white">{formatCurrency(payout.amount)}</p>
+                                            <p className="text-sm font-bold text-gray-900">{formatCurrency(payout.amount)}</p>
                                             <p className="text-xs text-gray-500">
                                                 {new Date(payout.requested_at).toLocaleDateString("en-US", {
                                                     month: "short",
@@ -502,3 +502,4 @@ export default function WalletPage() {
         </div>
     );
 }
+

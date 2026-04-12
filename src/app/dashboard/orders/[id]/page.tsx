@@ -106,7 +106,7 @@ export default function OrderDetailsPage() {
                 <div className="md:col-span-2 space-y-6">
 
                     {/* Status Timeline */}
-                    <div className="bg-[#141420] border border-white/5 rounded-2xl p-6">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6">
                         <h2 className="text-lg font-bold mb-6 flex items-center gap-2">
                             <Clock size={18} className="text-blue-400" /> Order Status
                         </h2>
@@ -120,12 +120,12 @@ export default function OrderDetailsPage() {
 
                                     return (
                                         <div key={status} className="relative flex items-center gap-4">
-                                            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center bg-[#141420] z-10 ${isCompleted ? 'border-emerald-500 text-emerald-500' : 'border-white/10 text-gray-500'
+                                            <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center bg-white shadow-sm z-10 ${isCompleted ? 'border-emerald-500 text-emerald-500' : 'border-gray-200 text-gray-500'
                                                 }`}>
                                                 {isCompleted ? <CheckCircle2 size={16} /> : <div className="w-2 h-2 rounded-full bg-gray-500" />}
                                             </div>
                                             <div>
-                                                <p className={`font-medium capitalize ${isCompleted ? 'text-white' : 'text-gray-500'}`}>
+                                                <p className={`font-medium capitalize ${isCompleted ? 'text-gray-900' : 'text-gray-500'}`}>
                                                     {status}
                                                 </p>
                                                 {isCurrent && status !== "completed" && (
@@ -168,14 +168,14 @@ export default function OrderDetailsPage() {
                     </div>
 
                     {/* Order Items */}
-                    <div className="bg-[#141420] border border-white/5 rounded-2xl p-6">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6">
                         <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <Package size={18} className="text-violet-400" /> Items
                         </h2>
 
                         <div className="space-y-4">
                             {order.items_json.map((item, idx) => (
-                                <div key={idx} className="flex justify-between items-start pb-4 border-b border-white/5 last:border-0 last:pb-0">
+                                <div key={idx} className="flex justify-between items-start pb-4 border-b border-gray-200 last:border-0 last:pb-0">
                                     <div>
                                         <p className="font-semibold">{item.quantity}x {item.name}</p>
                                         {item.variant && (
@@ -190,7 +190,7 @@ export default function OrderDetailsPage() {
                             ))}
                         </div>
 
-                        <div className="mt-6 space-y-2 border-t border-white/10 pt-4">
+                        <div className="mt-6 space-y-2 border-t border-gray-200 pt-4">
                             <div className="flex justify-between text-sm text-gray-400">
                                 <span>Subtotal</span>
                                 <span>{formatCurrency(order.subtotal)}</span>
@@ -199,7 +199,7 @@ export default function OrderDetailsPage() {
                                 <span>Tax</span>
                                 <span>{formatCurrency(order.tax_amount)}</span>
                             </div>
-                            <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-white/5">
+                            <div className="flex justify-between font-bold text-lg mt-2 pt-2 border-t border-gray-200">
                                 <span>Total</span>
                                 <span className="text-emerald-400">{formatCurrency(order.total_amount)}</span>
                             </div>
@@ -209,7 +209,7 @@ export default function OrderDetailsPage() {
 
                 {/* Right Column: Customer Info */}
                 <div className="space-y-6">
-                    <div className="bg-[#141420] border border-white/5 rounded-2xl p-6">
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-6">
                         <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
                             <User size={18} className="text-amber-400" /> Customer Details
                         </h2>

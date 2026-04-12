@@ -331,7 +331,7 @@ export default function MenuBuilder() {
                 {activeCategory && (
                     <button
                         onClick={() => openItemModal()}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold transition-all duration-200 shadow-lg shadow-emerald-500/20"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-gray-900 rounded-xl text-sm font-semibold transition-all duration-200 shadow-lg shadow-emerald-500/20"
                     >
                         <Plus size={16} />
                         Add Item
@@ -353,7 +353,7 @@ export default function MenuBuilder() {
                                     "w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200",
                                     activeCategory === cat.id
                                         ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                        : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
+                                        : "text-gray-400 hover:text-gray-900 hover:bg-white/5 border border-transparent"
                                 )}
                             >
                                 <span className="truncate pr-8">{cat.name}</span>
@@ -376,7 +376,7 @@ export default function MenuBuilder() {
                     ))}
                     <button
                         onClick={() => openCategoryModal()}
-                        className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/5 transition-all duration-200 border border-dashed border-white/10 hover:border-emerald-500/30"
+                        className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-gray-500 hover:text-emerald-400 hover:bg-emerald-500/5 transition-all duration-200 border border-dashed border-gray-200 hover:border-emerald-500/30"
                     >
                         <Plus size={14} />
                         Add Category
@@ -386,7 +386,7 @@ export default function MenuBuilder() {
                 {/* Items grid */}
                 <div className="lg:col-span-3 space-y-3">
                     {!activeCategory && (
-                        <div className="py-20 text-center text-gray-500 bg-[#141420]/50 rounded-2xl border border-dashed border-white/5">
+                        <div className="py-20 text-center text-gray-500 bg-white/50 rounded-2xl border border-dashed border-gray-200">
                             Select or create a category to view items
                         </div>
                     )}
@@ -394,15 +394,15 @@ export default function MenuBuilder() {
                         <div
                             key={item.id}
                             className={cn(
-                                "bg-[#141420] border rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:shadow-black/20",
-                                item.is_available ? "border-white/5 hover:border-white/10" : "border-white/5 opacity-60"
+                                "bg-white border rounded-xl p-5 transition-all duration-200 hover:shadow-lg hover:shadow-black/20",
+                                item.is_available ? "border-gray-200 hover:border-gray-200" : "border-gray-200 opacity-60"
                             )}
                         >
                             <div className="flex items-start gap-4">
                                 <div className="pt-1 cursor-grab text-gray-600 hover:text-gray-400">
                                     <GripVertical size={16} />
                                 </div>
-                                <div className="w-16 h-16 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                                <div className="w-16 h-16 rounded-lg bg-white/5 border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden relative">
                                     {item.image_url ? (
                                         <img src={item.image_url} alt={item.name} className={cn("w-full h-full object-cover", !item.is_available && "grayscale opacity-50")} />
                                     ) : (
@@ -410,14 +410,14 @@ export default function MenuBuilder() {
                                     )}
                                     {!item.is_available && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                            <span className="text-[8px] font-black text-white bg-red-600 px-1 rounded-sm rotate-[-15deg]">SOLD OUT</span>
+                                            <span className="text-[8px] font-black text-gray-900 bg-red-600 px-1 rounded-sm rotate-[-15deg]">SOLD OUT</span>
                                         </div>
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <h3 className="font-semibold text-white">{item.name}</h3>
+                                            <h3 className="font-semibold text-gray-900">{item.name}</h3>
                                             <p className="text-sm text-gray-400 mt-0.5 line-clamp-1">{item.description}</p>
                                         </div>
                                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -459,7 +459,7 @@ export default function MenuBuilder() {
                         </div>
                     ))}
                     {activeCategory && activeItems.length === 0 && (
-                        <div className="py-20 text-center text-gray-600 italic bg-[#141420]/30 rounded-2xl">
+                        <div className="py-20 text-center text-gray-600 italic bg-white/30 rounded-2xl">
                             No items in this category yet.
                         </div>
                     )}
@@ -469,10 +469,10 @@ export default function MenuBuilder() {
             {/* Category Modal */}
             {isCategoryModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl">
-                        <div className="flex items-center justify-between p-6 border-b border-white/5">
+                    <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-md shadow-2xl">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
                             <h3 className="text-xl font-bold">{editingCategory ? "Edit Category" : "Add Category"}</h3>
-                            <button onClick={() => setIsCategoryModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">
+                            <button onClick={() => setIsCategoryModalOpen(false)} className="text-gray-500 hover:text-gray-900 transition-colors">
                                 <X size={20} />
                             </button>
                         </div>
@@ -482,7 +482,7 @@ export default function MenuBuilder() {
                                 <input
                                     type="text" required value={categoryName}
                                     onChange={(e) => setCategoryName(e.target.value)}
-                                    className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50"
+                                    className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50"
                                 />
                             </div>
                             <div className="flex gap-3 pt-4">
@@ -499,24 +499,24 @@ export default function MenuBuilder() {
             {/* Item Modal */}
             {isItemModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                    <div className="bg-[#1a1a2e] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <div className="flex items-center justify-between p-6 border-b border-white/5">
+                    <div className="bg-white border border-gray-200 rounded-2xl w-full max-w-2xl shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="flex items-center justify-between p-6 border-b border-gray-200">
                             <h3 className="text-xl font-bold">{editingItem ? "Edit Item" : "Add New Item"}</h3>
-                            <button onClick={() => setIsItemModalOpen(false)} className="text-gray-500 hover:text-white transition-colors">
+                            <button onClick={() => setIsItemModalOpen(false)} className="text-gray-500 hover:text-gray-900 transition-colors">
                                 <X size={20} />
                             </button>
                         </div>
                         <form onSubmit={handleSaveItem} className="p-6 space-y-6 overflow-y-auto max-h-[85vh]">
                             {/* Image Upload */}
-                            <div className="flex items-center gap-6 pb-6 border-b border-white/5">
-                                <div className="w-24 h-24 rounded-2xl bg-[#0a0a0f] border border-dashed border-white/10 flex items-center justify-center overflow-hidden flex-shrink-0 group relative">
+                            <div className="flex items-center gap-6 pb-6 border-b border-gray-200">
+                                <div className="w-24 h-24 rounded-2xl bg-slate-50 border border-dashed border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0 group relative">
                                     {itemImageUrl ? (
                                         <img src={itemImageUrl} alt="Preview" className="w-full h-full object-cover" />
                                     ) : (
                                         <ImageIcon size={32} className="text-gray-700" />
                                     )}
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <Pencil size={16} className="text-white" />
+                                        <Pencil size={16} className="text-gray-900" />
                                     </div>
                                     <input
                                         type="file"
@@ -526,7 +526,7 @@ export default function MenuBuilder() {
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <h4 className="font-semibold text-white mb-1">Item Photo</h4>
+                                    <h4 className="font-semibold text-gray-900 mb-1">Item Photo</h4>
                                     <p className="text-xs text-gray-500 mb-3">Upload a high-quality photo of the dish to attract more customers.</p>
                                     <label className="inline-flex items-center px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-xs font-bold text-gray-400 cursor-pointer transition-colors">
                                         {itemImageUrl ? "Change Photo" : "Choose Photo"}
@@ -539,28 +539,28 @@ export default function MenuBuilder() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Item Name</label>
-                                    <input type="text" required value={itemName} onChange={(e) => setItemName(e.target.value)} className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 text-white" />
+                                    <input type="text" required value={itemName} onChange={(e) => setItemName(e.target.value)} className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 text-gray-900" />
                                 </div>
                                 <div className="col-span-2">
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Description</label>
-                                    <textarea value={itemDescription} onChange={(e) => setItemDescription(e.target.value)} rows={2} className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 text-white" />
+                                    <textarea value={itemDescription} onChange={(e) => setItemDescription(e.target.value)} rows={2} className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 text-gray-900" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Base Price ($)</label>
-                                    <input type="number" step="0.01" required value={itemPrice} onChange={(e) => setItemPrice(e.target.value)} className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 font-mono text-white" />
+                                    <input type="number" step="0.01" required value={itemPrice} onChange={(e) => setItemPrice(e.target.value)} className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 font-mono text-gray-900" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Prep Time (min)</label>
-                                    <input type="number" required value={itemPrepTime} onChange={(e) => setItemPrepTime(e.target.value)} className="w-full bg-[#0a0a0f] border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 font-mono text-white" />
+                                    <input type="number" required value={itemPrepTime} onChange={(e) => setItemPrepTime(e.target.value)} className="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 font-mono text-gray-900" />
                                 </div>
                             </div>
 
                             {/* Options: Variants & Modifiers */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-white/5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-gray-200">
                                 {/* Variants */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-sm font-semibold text-white">Variants (e.g. Sizes)</label>
+                                        <label className="text-sm font-semibold text-gray-900">Variants (e.g. Sizes)</label>
                                         <button type="button" onClick={addVariant} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold">
                                             <Plus size={12} /> Add
                                         </button>
@@ -568,8 +568,8 @@ export default function MenuBuilder() {
                                     <div className="space-y-2">
                                         {itemVariants.map((v, i) => (
                                             <div key={i} className="flex gap-2 items-center">
-                                                <input placeholder="Name" value={v.name} onChange={(e) => updateVariant(i, "name", e.target.value)} className="flex-1 bg-[#0a0a0f] border border-white/10 rounded-lg py-2 px-3 text-xs text-white" />
-                                                <input type="number" step="0.01" placeholder="Price" value={v.price} onChange={(e) => updateVariant(i, "price", parseFloat(e.target.value))} className="w-20 bg-[#0a0a0f] border border-white/10 rounded-lg py-2 px-3 text-xs font-mono text-white" />
+                                                <input placeholder="Name" value={v.name} onChange={(e) => updateVariant(i, "name", e.target.value)} className="flex-1 bg-slate-50 border border-gray-200 rounded-lg py-2 px-3 text-xs text-gray-900" />
+                                                <input type="number" step="0.01" placeholder="Price" value={v.price} onChange={(e) => updateVariant(i, "price", parseFloat(e.target.value))} className="w-20 bg-slate-50 border border-gray-200 rounded-lg py-2 px-3 text-xs font-mono text-gray-900" />
                                                 <button type="button" onClick={() => removeVariant(i)} className="text-gray-500 hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         ))}
@@ -580,7 +580,7 @@ export default function MenuBuilder() {
                                 {/* Modifiers */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-sm font-semibold text-white">Add-ons (e.g. Toppings)</label>
+                                        <label className="text-sm font-semibold text-gray-900">Add-ons (e.g. Toppings)</label>
                                         <button type="button" onClick={addModifier} className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 font-bold">
                                             <Plus size={12} /> Add
                                         </button>
@@ -588,8 +588,8 @@ export default function MenuBuilder() {
                                     <div className="space-y-2">
                                         {itemModifiers.map((m, i) => (
                                             <div key={i} className="flex gap-2 items-center">
-                                                <input placeholder="Name" value={m.name} onChange={(e) => updateModifier(i, "name", e.target.value)} className="flex-1 bg-[#0a0a0f] border border-white/10 rounded-lg py-2 px-3 text-xs text-white" />
-                                                <input type="number" step="0.01" placeholder="Price" value={m.price} onChange={(e) => updateModifier(i, "price", parseFloat(e.target.value))} className="w-20 bg-[#0a0a0f] border border-white/10 rounded-lg py-2 px-3 text-xs font-mono text-white" />
+                                                <input placeholder="Name" value={m.name} onChange={(e) => updateModifier(i, "name", e.target.value)} className="flex-1 bg-slate-50 border border-gray-200 rounded-lg py-2 px-3 text-xs text-gray-900" />
+                                                <input type="number" step="0.01" placeholder="Price" value={m.price} onChange={(e) => updateModifier(i, "price", parseFloat(e.target.value))} className="w-20 bg-slate-50 border border-gray-200 rounded-lg py-2 px-3 text-xs font-mono text-gray-900" />
                                                 <button type="button" onClick={() => removeModifier(i)} className="text-gray-500 hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         ))}
@@ -598,7 +598,7 @@ export default function MenuBuilder() {
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 pt-6 border-t border-white/5">
+                            <div className="flex gap-3 pt-6 border-t border-gray-200">
                                 <button type="button" onClick={() => setIsItemModalOpen(false)} className="flex-1 py-3 bg-white/5 hover:bg-white/10 rounded-xl font-semibold transition-colors">Cancel</button>
                                 <button type="submit" disabled={formLoading} className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center">
                                     {formLoading ? <Loader2 className="animate-spin" size={20} /> : "Save Menu Item"}
@@ -611,3 +611,4 @@ export default function MenuBuilder() {
         </div>
     );
 }
+
